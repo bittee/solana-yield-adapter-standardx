@@ -54,11 +54,26 @@ describe("mainnet-fork account plan", () => {
   });
 
   it("derives protocol PDAs used in adapter tails", () => {
-    assertKey(kaminoMarketAuthority(), new PublicKey("9DrvZvyWh1HuAoZxvYWMvkf2XCzryCpGgHqrMjyDWpmo"));
-    assertKey(mapleOracle(), new PublicKey("H7j5FQpwTUMwxrWeuyrLr5Z9oHsPFiaRqNaERVsuE1c8"));
-    assertKey(driftState(), new PublicKey("5zpq7DvB6UdFFvpmBPspGPNfUGoBRRCE2HHg5u3gxcsN"));
-    assertKey(driftSigner(), new PublicKey("JCNCMFXo5M5qwUPg2Utu1u6YWp3MbygxqBsBeXXJfrw"));
-    assertKey(driftSpotMarket(), new PublicKey("6gMq3mRCKf8aP3ttTyYhuijVZ2LGi14oDsBbkgubfLB3"));
+    assertKey(
+      kaminoMarketAuthority(),
+      new PublicKey("9DrvZvyWh1HuAoZxvYWMvkf2XCzryCpGgHqrMjyDWpmo"),
+    );
+    assertKey(
+      mapleOracle(),
+      new PublicKey("H7j5FQpwTUMwxrWeuyrLr5Z9oHsPFiaRqNaERVsuE1c8"),
+    );
+    assertKey(
+      driftState(),
+      new PublicKey("5zpq7DvB6UdFFvpmBPspGPNfUGoBRRCE2HHg5u3gxcsN"),
+    );
+    assertKey(
+      driftSigner(),
+      new PublicKey("JCNCMFXo5M5qwUPg2Utu1u6YWp3MbygxqBsBeXXJfrw"),
+    );
+    assertKey(
+      driftSpotMarket(),
+      new PublicKey("6gMq3mRCKf8aP3ttTyYhuijVZ2LGi14oDsBbkgubfLB3"),
+    );
     assertKey(
       driftSpotMarketVault(),
       new PublicKey("GXWqPpjQpdz7KZw9p7f5PX2eGxHAhvpNXiviFkAB8zXg"),
@@ -112,13 +127,17 @@ describe("mainnet-fork account plan", () => {
     const programSet = new Set(EXTERNAL_PROGRAMS.map((key) => key.toBase58()));
     for (const clone of MAINNET_CLONES) {
       if (programSet.has(clone.toBase58())) {
-        throw new Error(`program id appears in clone list: ${clone.toBase58()}`);
+        throw new Error(
+          `program id appears in clone list: ${clone.toBase58()}`,
+        );
       }
     }
   });
 
   it("knows which Doves accounts need timestamp patching", () => {
-    const patched = new Set(PATCHED_DOVES_ACCOUNTS.map((key) => key.toBase58()));
+    const patched = new Set(
+      PATCHED_DOVES_ACCOUNTS.map((key) => key.toBase58()),
+    );
     for (const key of JUPITER.dovesAgPrices) {
       if (!patched.has(key.toBase58())) {
         throw new Error(`missing Doves patch account ${key.toBase58()}`);
@@ -129,6 +148,8 @@ describe("mainnet-fork account plan", () => {
 
 function assertKey(actual: PublicKey, expected: PublicKey): void {
   if (!actual.equals(expected)) {
-    throw new Error(`expected ${expected.toBase58()}, got ${actual.toBase58()}`);
+    throw new Error(
+      `expected ${expected.toBase58()}, got ${actual.toBase58()}`,
+    );
   }
 }

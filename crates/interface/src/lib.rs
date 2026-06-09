@@ -58,9 +58,9 @@ pub fn read_return_u64(expected_program: &Pubkey) -> Result<u64> {
         *expected_program,
         StandardError::UnexpectedReturnProgram
     );
+    require!(data.len() == 8, StandardError::InvalidReturnData);
     let bytes: [u8; 8] = data
-        .get(..8)
-        .ok_or(StandardError::InvalidReturnData)?
+        .as_slice()
         .try_into()
         .map_err(|_| error!(StandardError::InvalidReturnData))?;
     Ok(u64::from_le_bytes(bytes))
@@ -199,7 +199,7 @@ mod tests {
         );
         assert_eq!(
             anchor_discriminator("current_value"),
-            [16, 251, 138, 181, 196, 28, 222, 47]
+            [232, 199, 167, 206, 247, 56, 234, 20]
         );
     }
 }

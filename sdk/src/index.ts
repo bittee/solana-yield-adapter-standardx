@@ -30,7 +30,10 @@ export const USDC_MINT = new PublicKey(
 );
 
 export function registryPda(programId = REGISTRY_PROGRAM_ID): PublicKey {
-  return PublicKey.findProgramAddressSync([Buffer.from("registry")], programId)[0];
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("registry")],
+    programId,
+  )[0];
 }
 
 export function adapterEntryPda(

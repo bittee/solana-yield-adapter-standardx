@@ -1,4 +1,8 @@
-import { PublicKey, SYSVAR_INSTRUCTIONS_PUBKEY, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
+import {
+  PublicKey,
+  SYSVAR_INSTRUCTIONS_PUBKEY,
+  SYSVAR_RENT_PUBKEY,
+} from "@solana/web3.js";
 import {
   DRIFT_IF_ADAPTER_PROGRAM_ID,
   JUPITER_JLP_ADAPTER_PROGRAM_ID,
@@ -8,7 +12,9 @@ import {
   USDC_MINT,
 } from "../../sdk/src/index.js";
 
-export const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+export const TOKEN_PROGRAM_ID = new PublicKey(
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+);
 
 export const KAMINO = {
   adapter: KAMINO_USDC_ADAPTER_PROGRAM_ID,
@@ -16,8 +22,12 @@ export const KAMINO = {
   program: new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD"),
   reserve: new PublicKey("D6q6wuQSrifJKZYpR1M8R4YawnLDtDsMmWM1NbBmgJ59"),
   lendingMarket: new PublicKey("7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5PfF"),
-  reserveLiquiditySupply: new PublicKey("Bgq7trRgVMeq33yt235zM2onQ4bRDBsY5EWiTetF4qw6"),
-  reserveCollateralMint: new PublicKey("B8V6WVjPxW1UGwVDfxH2d2r8SyT4cqn7dQRK6XneVa7D"),
+  reserveLiquiditySupply: new PublicKey(
+    "Bgq7trRgVMeq33yt235zM2onQ4bRDBsY5EWiTetF4qw6",
+  ),
+  reserveCollateralMint: new PublicKey(
+    "B8V6WVjPxW1UGwVDfxH2d2r8SyT4cqn7dQRK6XneVa7D",
+  ),
 } as const;
 
 export function kaminoMarketAuthority(): PublicKey {
@@ -34,7 +44,9 @@ export const MARGINFI = {
   group: new PublicKey("4qp6Fx6tnZkY5Wropq9wUYgtFxXKwE6viZxFHg3rdAG8"),
   usdcBank: new PublicKey("2s37akK2eyBbp8DZgCm7RtsaEz8eJP3Nxd4urLHQv7yB"),
   liquidityVault: new PublicKey("7jaiZR5Sk8hdYN9MxTpczTcwbWpb5WEoxSANuUwveuat"),
-  liquidityVaultAuthority: new PublicKey("3uxNepDbmkDNq6JhRja5Z8QwbTrfmkKP8AKZV5chYDGG"),
+  liquidityVaultAuthority: new PublicKey(
+    "3uxNepDbmkDNq6JhRja5Z8QwbTrfmkKP8AKZV5chYDGG",
+  ),
   oracle: new PublicKey("Dpw1EAVrSB1ibxiDQyTAW6Zip3J4Btk2x4SgApQCeFbX"),
 } as const;
 
@@ -56,13 +68,19 @@ export const JUPITER = {
   protocolVariant: 3,
   program: new PublicKey("PERPHjGBqRHArX4DySjwM6UJHiR3sWAatqfdBS2qQJu"),
   perpetuals: new PublicKey("H4ND9aYttUVLFmNypZqLjZ52FYiGvdEB45GmwNoKEjTj"),
-  transferAuthority: new PublicKey("AVzP2GeRmqGphJsMxWoqjpUifPpCret7LqWhD8NWQK49"),
+  transferAuthority: new PublicKey(
+    "AVzP2GeRmqGphJsMxWoqjpUifPpCret7LqWhD8NWQK49",
+  ),
   eventAuthority: new PublicKey("37hJBDnntwqhGbK7L6M1bLyvccj4u55CCUiLPdYkiqBN"),
   pool: new PublicKey("5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq"),
   usdcCustody: new PublicKey("G18jKKXQwBbrHeiK3C9MRXhkHsLHf7XgCSisykV46EZa"),
-  custodyTokenAccount: new PublicKey("WzWUoCmtVv7eqAbU3BfKPU3fhLP6CXR8NCJH78UK9VS"),
+  custodyTokenAccount: new PublicKey(
+    "WzWUoCmtVv7eqAbU3BfKPU3fhLP6CXR8NCJH78UK9VS",
+  ),
   usdcDovesPrice: new PublicKey("6Jp2xZUTWdDD2ZyUPRzeMdc6AFQ5K3pFgZxk2EijfjnM"),
-  usdcPythnetPrice: new PublicKey("Dpw1EAVrSB1ibxiDQyTAW6Zip3J4Btk2x4SgApQCeFbX"),
+  usdcPythnetPrice: new PublicKey(
+    "Dpw1EAVrSB1ibxiDQyTAW6Zip3J4Btk2x4SgApQCeFbX",
+  ),
   jlpMint: new PublicKey("27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4"),
   custodies: [
     new PublicKey("7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz"),
@@ -139,7 +157,11 @@ export function driftUserStats(authority: PublicKey): PublicKey {
 }
 
 export function driftInsuranceFundStake(authority: PublicKey): PublicKey {
-  return driftPda([Buffer.from("insurance_fund_stake"), authority.toBuffer(), MARKET_INDEX_0]);
+  return driftPda([
+    Buffer.from("insurance_fund_stake"),
+    authority.toBuffer(),
+    MARKET_INDEX_0,
+  ]);
 }
 
 export const EXTERNAL_PROGRAMS = [
