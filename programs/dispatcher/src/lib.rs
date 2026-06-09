@@ -18,6 +18,7 @@ pub mod dispatcher {
             &ctx,
             syas_interface::encode_deposit(amount, min_position_out),
         )?;
+        forward_adapter_return(&ctx)?;
         emit!(AdapterRouted {
             adapter: ctx.accounts.adapter_program.key(),
             action: AdapterAction::Deposit,
@@ -35,6 +36,7 @@ pub mod dispatcher {
             &ctx,
             syas_interface::encode_withdraw(position_amount, min_amount_out),
         )?;
+        forward_adapter_return(&ctx)?;
         emit!(AdapterRouted {
             adapter: ctx.accounts.adapter_program.key(),
             action: AdapterAction::Withdraw,
@@ -45,14 +47,19 @@ pub mod dispatcher {
     pub fn route_current_value<'info>(ctx: Context<'_, '_, '_, 'info, Route<'info>>) -> Result<()> {
         gate(&ctx)?;
         invoke_adapter(&ctx, syas_interface::encode_current_value())?;
-        let value = syas_interface::read_return_u64(&ctx.accounts.adapter_program.key())?;
-        syas_interface::set_return_u64(value);
+        forward_adapter_return(&ctx)?;
         emit!(AdapterRouted {
             adapter: ctx.accounts.adapter_program.key(),
             action: AdapterAction::CurrentValue,
         });
         Ok(())
     }
+}
+
+fn forward_adapter_return(ctx: &Context<Route>) -> Result<()> {
+    let value = syas_interface::read_return_u64(&ctx.accounts.adapter_program.key())?;
+    syas_interface::set_return_u64(value);
+    Ok(())
 }
 
 fn gate(ctx: &Context<Route>) -> Result<()> {

@@ -18,7 +18,7 @@ pub mod mock_adapter {
             ctx.accounts.base_mint.key(),
             ctx.bumps.position,
             ctx.bumps.position_authority,
-        );
+        )?;
 
         let position_out = amount;
         require!(
@@ -50,6 +50,12 @@ pub mod mock_adapter {
             &ctx.accounts.base_mint.key(),
         )?;
         let position = &mut ctx.accounts.position;
+        position.initialize_if_needed(
+            ctx.accounts.owner.key(),
+            ctx.accounts.base_mint.key(),
+            ctx.bumps.position,
+            ctx.bumps.position_authority,
+        )?;
         require!(
             position_amount <= position.shares,
             StandardError::SlippageExceeded
@@ -79,8 +85,14 @@ pub mod mock_adapter {
             &ctx.accounts.registry_entry.to_account_info(),
             &ctx.accounts.base_mint.key(),
         )?;
-        let value = ctx.accounts.position.shares;
         let position = &mut ctx.accounts.position;
+        position.initialize_if_needed(
+            ctx.accounts.owner.key(),
+            ctx.accounts.base_mint.key(),
+            ctx.bumps.position,
+            ctx.bumps.position_authority,
+        )?;
+        let value = position.shares;
         position.cached_value = value;
         syas_interface::set_return_u64(value);
         emit!(ValueReported {
@@ -155,12 +167,16 @@ impl Position {
         base_mint: Pubkey,
         bump: u8,
         position_authority_bump: u8,
-    ) {
+    ) -> Result<()> {
         if self.owner == Pubkey::default() {
             self.owner = owner;
             self.base_mint = base_mint;
             self.bump = bump;
             self.position_authority_bump = position_authority_bump;
+        } else {
+            require_keys_eq!(self.owner, owner, StandardError::InvalidProtocolAccount);
+            require_keys_eq!(self.base_mint, base_mint, StandardError::MintMismatch);
         }
+        Ok(())
     }
 }

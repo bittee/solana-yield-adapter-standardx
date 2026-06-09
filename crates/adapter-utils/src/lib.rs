@@ -308,6 +308,6 @@ mod tests {
     #[test]
     fn mul_div_handles_wide_values_when_result_fits() {
         let result = mul_div_floor_u128(u128::MAX / 3, 9, 3).unwrap();
-        assert_eq!(result, u128::MAX - 2);
+        assert_eq!(result, u128::MAX);
     }
 }

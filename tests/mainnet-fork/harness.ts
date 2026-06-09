@@ -100,7 +100,9 @@ export function routeContext(spec: ForkAdapterSpec): RouteContext {
   };
 }
 
-export async function ensureAdapterRegistered(spec: ForkAdapterSpec): Promise<void> {
+export async function ensureAdapterRegistered(
+  spec: ForkAdapterSpec,
+): Promise<void> {
   const adapterEntry = adapterEntryPda(spec.adapterProgram);
   const tx = new Transaction();
 
@@ -112,9 +114,16 @@ export async function ensureAdapterRegistered(spec: ForkAdapterSpec): Promise<vo
         keys: [
           { pubkey: registryAccount, isSigner: false, isWritable: true },
           { pubkey: owner(), isSigner: true, isWritable: true },
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+          {
+            pubkey: SystemProgram.programId,
+            isSigner: false,
+            isWritable: false,
+          },
         ],
-        data: concatBytes(discriminator("initialize_registry"), owner().toBytes()),
+        data: concatBytes(
+          discriminator("initialize_registry"),
+          owner().toBytes(),
+        ),
       }),
     );
   }
@@ -127,7 +136,11 @@ export async function ensureAdapterRegistered(spec: ForkAdapterSpec): Promise<vo
           { pubkey: registryAccount, isSigner: false, isWritable: true },
           { pubkey: adapterEntry, isSigner: false, isWritable: true },
           { pubkey: owner(), isSigner: true, isWritable: true },
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+          {
+            pubkey: SystemProgram.programId,
+            isSigner: false,
+            isWritable: false,
+          },
         ],
         data: concatBytes(
           discriminator("register_adapter"),
@@ -155,7 +168,11 @@ export async function disableAdapter(spec: ForkAdapterSpec): Promise<void> {
         programId: REGISTRY_PROGRAM_ID,
         keys: [
           { pubkey: registryAccount, isSigner: false, isWritable: false },
-          { pubkey: adapterEntryPda(spec.adapterProgram), isSigner: false, isWritable: true },
+          {
+            pubkey: adapterEntryPda(spec.adapterProgram),
+            isSigner: false,
+            isWritable: true,
+          },
           { pubkey: owner(), isSigner: true, isWritable: false },
         ],
         data: discriminator("disable_adapter"),
@@ -169,11 +186,16 @@ export async function routeDeposit(spec: ForkAdapterSpec): Promise<void> {
   await sendRoute(spec, "route_deposit", [u64(spec.amountIn), u64(0n)]);
 }
 
-export async function routeWithdraw(spec: ForkAdapterSpec, positionAmount: bigint): Promise<void> {
+export async function routeWithdraw(
+  spec: ForkAdapterSpec,
+  positionAmount: bigint,
+): Promise<void> {
   await sendRoute(spec, "route_withdraw", [u64(positionAmount), u64(0n)]);
 }
 
-export async function simulateCurrentValue(spec: ForkAdapterSpec): Promise<bigint> {
+export async function simulateCurrentValue(
+  spec: ForkAdapterSpec,
+): Promise<bigint> {
   const provider = forkProvider();
   const ctx = routeContext(spec);
   const tx = new Transaction().add(
@@ -181,11 +203,15 @@ export async function simulateCurrentValue(spec: ForkAdapterSpec): Promise<bigin
     routeInstruction(spec, "route_current_value", [], ctx),
   );
   tx.feePayer = owner();
-  tx.recentBlockhash = (await provider.connection.getLatestBlockhash()).blockhash;
+  tx.recentBlockhash = (
+    await provider.connection.getLatestBlockhash()
+  ).blockhash;
   const signed = await provider.wallet.signTransaction(tx);
   const simulation = await provider.connection.simulateTransaction(signed);
   if (simulation.value.err) {
-    throw new Error(`${spec.name} current_value failed: ${JSON.stringify(simulation.value.err)}`);
+    throw new Error(
+      `${spec.name} current_value failed: ${JSON.stringify(simulation.value.err)}`,
+    );
   }
   const returned = simulation.value.returnData;
   if (!returned) {
@@ -194,8 +220,12 @@ export async function simulateCurrentValue(spec: ForkAdapterSpec): Promise<bigin
   return Buffer.from(returned.data[0], "base64").readBigUInt64LE(0);
 }
 
-export async function readPositionShares(spec: ForkAdapterSpec): Promise<bigint> {
-  const account = await forkProvider().connection.getAccountInfo(routeContext(spec).position);
+export async function readPositionShares(
+  spec: ForkAdapterSpec,
+): Promise<bigint> {
+  const account = await forkProvider().connection.getAccountInfo(
+    routeContext(spec).position,
+  );
   if (!account) {
     return 0n;
   }
@@ -203,7 +233,9 @@ export async function readPositionShares(spec: ForkAdapterSpec): Promise<bigint>
 }
 
 export async function tokenBalance(account: PublicKey): Promise<bigint> {
-  const response = await forkProvider().connection.getTokenAccountBalance(account).catch(() => null);
+  const response = await forkProvider()
+    .connection.getTokenAccountBalance(account)
+    .catch(() => null);
   return response ? BigInt(response.value.amount) : 0n;
 }
 
@@ -270,8 +302,10 @@ export const ADAPTER_SPECS: ForkAdapterSpec[] = [
     receiptMint: MAPLE.syrupMint,
     amountIn: 1_000_000n,
     tail: (ctx, action) => {
-      const tickArray1 = action === "withdraw" ? MAPLE.sellTickArray1 : MAPLE.buyTickArray1;
-      const tickArray2 = action === "withdraw" ? MAPLE.sellTickArray2 : MAPLE.buyTickArray2;
+      const tickArray1 =
+        action === "withdraw" ? MAPLE.sellTickArray1 : MAPLE.buyTickArray1;
+      const tickArray2 =
+        action === "withdraw" ? MAPLE.sellTickArray2 : MAPLE.buyTickArray2;
       return [
         writable(false, MAPLE.syrupMint),
         writable(true, requiredReceipt(ctx, "Maple")),
@@ -306,12 +340,18 @@ export const ADAPTER_SPECS: ForkAdapterSpec[] = [
   },
 ];
 
-function enableAdapterInstruction(spec: ForkAdapterSpec): TransactionInstruction {
+function enableAdapterInstruction(
+  spec: ForkAdapterSpec,
+): TransactionInstruction {
   return new TransactionInstruction({
     programId: REGISTRY_PROGRAM_ID,
     keys: [
       { pubkey: registryAccount, isSigner: false, isWritable: false },
-      { pubkey: adapterEntryPda(spec.adapterProgram), isSigner: false, isWritable: true },
+      {
+        pubkey: adapterEntryPda(spec.adapterProgram),
+        isSigner: false,
+        isWritable: true,
+      },
       { pubkey: owner(), isSigner: true, isWritable: false },
     ],
     data: discriminator("enable_adapter"),
@@ -357,7 +397,9 @@ function routeInstruction(
   });
 }
 
-function routeAction(name: "route_deposit" | "route_withdraw" | "route_current_value"): RouteAction {
+function routeAction(
+  name: "route_deposit" | "route_withdraw" | "route_current_value",
+): RouteAction {
   if (name === "route_deposit") {
     return "deposit";
   }

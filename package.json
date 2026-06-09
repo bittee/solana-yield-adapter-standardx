@@ -9,7 +9,8 @@
     "test:fork": "node --import tsx scripts/mainnet-fork/run.ts",
     "test:anchor": "anchor test",
     "fmt": "cargo fmt --all && prettier --write \"{tests,sdk,scripts}/**/*.{ts,js,json}\" \"*.json\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bounty:check": "node --import tsx scripts/bounty/check.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.31.1",

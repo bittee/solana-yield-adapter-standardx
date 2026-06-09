@@ -33,7 +33,8 @@ type MockAdapterAccounts = {
 };
 
 async function ensureRegistered(): Promise<void> {
-  const registryInfo = await provider.connection.getAccountInfo(registryAccount);
+  const registryInfo =
+    await provider.connection.getAccountInfo(registryAccount);
   if (!registryInfo) {
     await registry.methods
       .initializeRegistry(owner)
@@ -83,7 +84,20 @@ function routeAccounts() {
   };
 }
 
-describe("dispatcher + registry + mock adapter", () => {
+const hasLocalAnchorProvider = Boolean(
+  process.env.ANCHOR_PROVIDER_URL && process.env.ANCHOR_WALLET,
+);
+const describeWithProvider = hasLocalAnchorProvider ? describe : describe.skip;
+
+describe("dispatcher + registry + mock adapter guard", () => {
+  it("is explicit when local Anchor provider is not configured", function () {
+    if (hasLocalAnchorProvider) {
+      this.skip();
+    }
+  });
+});
+
+describeWithProvider("dispatcher + registry + mock adapter", () => {
   before(() => {
     provider = AnchorProvider.env();
     anchor.setProvider(provider);
@@ -110,10 +124,14 @@ describe("dispatcher + registry + mock adapter", () => {
       .accounts(routeAccounts())
       .transaction();
     valueTx.feePayer = owner;
-    valueTx.recentBlockhash = (await provider.connection.getLatestBlockhash()).blockhash;
+    valueTx.recentBlockhash = (
+      await provider.connection.getLatestBlockhash()
+    ).blockhash;
     const simulation = await provider.connection.simulateTransaction(valueTx);
     if (simulation.value.err) {
-      throw new Error(`current_value simulation failed: ${JSON.stringify(simulation.value.err)}`);
+      throw new Error(
+        `current_value simulation failed: ${JSON.stringify(simulation.value.err)}`,
+      );
     }
     const returnData = simulation.value.returnData;
     if (!returnData) {
@@ -129,9 +147,9 @@ describe("dispatcher + registry + mock adapter", () => {
       .accounts(routeAccounts())
       .rpc();
 
-    const stored = await (mockAdapter.account as unknown as MockAdapterAccounts).position.fetch(
-      position,
-    );
+    const stored = await (
+      mockAdapter.account as unknown as MockAdapterAccounts
+    ).position.fetch(position);
     if (!stored.shares.eq(new BN(600))) {
       throw new Error(`expected 600 shares, got ${stored.shares.toString()}`);
     }

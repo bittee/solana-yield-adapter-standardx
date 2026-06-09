@@ -4,7 +4,12 @@ import { spawn } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { MAINNET_CLONES, EXTERNAL_PROGRAMS, PATCHED_DOVES_ACCOUNTS, TOKEN_PROGRAM_ID } from "./accounts.js";
+import {
+  MAINNET_CLONES,
+  EXTERNAL_PROGRAMS,
+  PATCHED_DOVES_ACCOUNTS,
+  TOKEN_PROGRAM_ID,
+} from "./accounts.js";
 import { USDC_MINT } from "../../sdk/src/index.js";
 
 const LOCAL_URL = "http://127.0.0.1:8899";
@@ -16,7 +21,9 @@ const OWNER_USDC_AMOUNT = 1_000_000_000_000n;
 async function main(): Promise<void> {
   const mainnetRpc = process.env.MAINNET_RPC_URL;
   if (!mainnetRpc) {
-    throw new Error("MAINNET_RPC_URL is required for strict mainnet-fork tests");
+    throw new Error(
+      "MAINNET_RPC_URL is required for strict mainnet-fork tests",
+    );
   }
 
   await rm(WORK_DIR, { recursive: true, force: true });
@@ -24,9 +31,16 @@ async function main(): Promise<void> {
 
   const payer = deterministicPayer();
   await writeFile(PAYER_PATH, JSON.stringify(Array.from(payer.secretKey)));
-  const ownerTokenAccount = getAssociatedTokenAddressSync(USDC_MINT, payer.publicKey, false);
+  const ownerTokenAccount = getAssociatedTokenAddressSync(
+    USDC_MINT,
+    payer.publicKey,
+    false,
+  );
   const ownerTokenPath = join(WORK_DIR, "owner-usdc.json");
-  await writeFile(ownerTokenPath, JSON.stringify(tokenAccountFixture(payer.publicKey), null, 2));
+  await writeFile(
+    ownerTokenPath,
+    JSON.stringify(tokenAccountFixture(payer.publicKey), null, 2),
+  );
 
   const patchedAccounts = await writePatchedDovesAccounts(mainnetRpc);
   await spawnChecked("anchor", ["build", "--no-idl"]);
@@ -38,13 +52,21 @@ async function main(): Promise<void> {
     LEDGER_DIR,
     "--url",
     mainnetRpc,
-    ...EXTERNAL_PROGRAMS.flatMap((program) => ["--clone-upgradeable-program", program.toBase58()]),
-    ...MAINNET_CLONES.filter((key) => !PATCHED_DOVES_ACCOUNTS.some((patched) => patched.equals(key)))
-      .flatMap((account) => ["--clone", account.toBase58()]),
+    ...EXTERNAL_PROGRAMS.flatMap((program) => [
+      "--clone-upgradeable-program",
+      program.toBase58(),
+    ]),
+    ...MAINNET_CLONES.filter(
+      (key) => !PATCHED_DOVES_ACCOUNTS.some((patched) => patched.equals(key)),
+    ).flatMap((account) => ["--clone", account.toBase58()]),
     "--account",
     ownerTokenAccount.toBase58(),
     ownerTokenPath,
-    ...patchedAccounts.flatMap(({ pubkey, path }) => ["--account", pubkey.toBase58(), path]),
+    ...patchedAccounts.flatMap(({ pubkey, path }) => [
+      "--account",
+      pubkey.toBase58(),
+      path,
+    ]),
   ];
 
   const validator = spawn("solana-test-validator", validatorArgs, {
@@ -68,7 +90,13 @@ async function main(): Promise<void> {
   });
 
   await waitForHealth();
-  await spawnChecked("solana", ["airdrop", "1000", payer.publicKey.toBase58(), "--url", LOCAL_URL]);
+  await spawnChecked("solana", [
+    "airdrop",
+    "1000",
+    payer.publicKey.toBase58(),
+    "--url",
+    LOCAL_URL,
+  ]);
 
   for (const program of LOCAL_PROGRAMS) {
     await spawnChecked("solana", [

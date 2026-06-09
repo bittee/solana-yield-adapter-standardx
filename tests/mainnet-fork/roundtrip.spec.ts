@@ -48,7 +48,9 @@ describeFork("mainnet-fork adapter roundtrips", () => {
 
         const value = await simulateCurrentValue(spec);
         if (value === 0n) {
-          throw new Error(`${spec.name} current_value returned zero after deposit`);
+          throw new Error(
+            `${spec.name} current_value returned zero after deposit`,
+          );
         }
 
         await routeWithdraw(spec, shares);
@@ -56,14 +58,18 @@ describeFork("mainnet-fork adapter roundtrips", () => {
         if (spec.delayedWithdraw) {
           const afterRequestShares = await readPositionShares(spec);
           if (afterRequestShares === 0n) {
-            throw new Error(`${spec.name} unexpectedly settled during the request phase`);
+            throw new Error(
+              `${spec.name} unexpectedly settled during the request phase`,
+            );
           }
           return;
         }
 
         const balanceAfter = await tokenBalance(ownerTokenAccount);
         if (balanceAfter <= balanceBefore - spec.amountIn) {
-          throw new Error(`${spec.name} withdraw did not return any base asset`);
+          throw new Error(
+            `${spec.name} withdraw did not return any base asset`,
+          );
         }
       });
     });
@@ -76,7 +82,9 @@ describe("mainnet-fork adapter roundtrips guard", () => {
       this.skip();
     }
     if (process.env.MAINNET_RPC_URL) {
-      throw new Error("set RUN_MAINNET_FORK_TESTS=1 to execute strict fork roundtrips");
+      throw new Error(
+        "set RUN_MAINNET_FORK_TESTS=1 to execute strict fork roundtrips",
+      );
     }
   });
 });
