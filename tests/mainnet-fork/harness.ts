@@ -251,7 +251,7 @@ export const ADAPTER_SPECS: ForkAdapterSpec[] = [
       writable(true, requiredReceipt(ctx, "Kamino")),
       writable(true, KAMINO.reserve),
       writable(false, KAMINO.lendingMarket),
-      writable(false, kaminoMarketAuthority()),
+      writable(true, kaminoMarketAuthority()),
       writable(true, KAMINO.reserveLiquiditySupply),
       writable(false, SYSVAR_ACCOUNTS.instructions),
       writable(false, KAMINO.program),

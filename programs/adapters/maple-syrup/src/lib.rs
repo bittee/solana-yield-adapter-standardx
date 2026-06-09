@@ -185,7 +185,10 @@ fn validate_common(ctx: &Context<StandardOp>) -> Result<()> {
     assert_owner(&ctx.accounts.tick_array_0.to_account_info(), &WHIRLPOOL_ID)?;
     assert_owner(&ctx.accounts.tick_array_1.to_account_info(), &WHIRLPOOL_ID)?;
     assert_owner(&ctx.accounts.tick_array_2.to_account_info(), &WHIRLPOOL_ID)?;
-    assert_owner(&ctx.accounts.oracle.to_account_info(), &WHIRLPOOL_ID)?;
+    let oracle_info = ctx.accounts.oracle.to_account_info();
+    if !oracle_info.data_is_empty() {
+        assert_owner(&oracle_info, &WHIRLPOOL_ID)?;
+    }
 
     let state = read_whirlpool(&ctx.accounts.whirlpool.to_account_info())?;
     require_keys_eq!(

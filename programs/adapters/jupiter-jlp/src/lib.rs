@@ -193,7 +193,7 @@ fn validate_common(ctx: &Context<StandardOp>) -> Result<()> {
     require_token_account(
         &ctx.accounts.custody_token_account.to_account_info(),
         &USDC_MINT,
-        &ctx.accounts.custody.key(),
+        &ctx.accounts.transfer_authority.key(),
         &ctx.accounts.token_program.key(),
     )?;
     Ok(())

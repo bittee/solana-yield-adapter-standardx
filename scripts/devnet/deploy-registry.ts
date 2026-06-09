@@ -31,7 +31,9 @@ async function main(): Promise<void> {
   assertProgramKeypair();
 
   run("anchor build --no-idl");
-  run("anchor deploy --provider.cluster devnet --program-name registry");
+  run(
+    `solana program deploy target/deploy/registry.so --program-id ${REGISTRY_KEYPAIR_PATH} --url "${DEVNET_URL}" --keypair "$ANCHOR_WALLET"`,
+  );
 
   const connection = devnetConnection();
   const programInfo = await connection.getAccountInfo(REGISTRY_PROGRAM_ID);

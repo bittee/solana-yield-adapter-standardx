@@ -121,34 +121,39 @@ async function main(): Promise<void> {
     process.exit(143);
   });
 
-  await waitForHealth(() => validatorExit);
-  await spawnChecked("solana", [
-    "airdrop",
-    "1000",
-    payer.publicKey.toBase58(),
-    "--url",
-    LOCAL_URL,
-  ]);
+  try {
+    await waitForHealth(() => validatorExit);
+    await spawnChecked("solana", [
+      "airdrop",
+      "1000",
+      payer.publicKey.toBase58(),
+      "--url",
+      LOCAL_URL,
+    ]);
 
-  await spawnChecked(
-    "node",
-    [
-      "--import",
-      "tsx",
-      "./node_modules/mocha/bin/mocha.js",
-      "--timeout",
-      "1000000",
-      "tests/mainnet-fork/roundtrip.spec.ts",
-    ],
-    {
-      ANCHOR_PROVIDER_URL: LOCAL_URL,
-      ANCHOR_WALLET: PAYER_PATH,
-      RUN_MAINNET_FORK_TESTS: "1",
-      MAINNET_RPC_URL: mainnetRpc,
-    },
-  );
+    await spawnChecked(
+      "node",
+      [
+        "--import",
+        "tsx",
+        "./node_modules/mocha/bin/mocha.js",
+        "--timeout",
+        "1000000",
+        "tests/mainnet-fork/roundtrip.spec.ts",
+      ],
+      {
+        ANCHOR_PROVIDER_URL: LOCAL_URL,
+        ANCHOR_WALLET: PAYER_PATH,
+        RUN_MAINNET_FORK_TESTS: "1",
+        MAINNET_RPC_URL: mainnetRpc,
+      },
+    );
 
-  await writeEvidence(forkSlot, payer.publicKey);
+    await writeEvidence(forkSlot, payer.publicKey);
+  } finally {
+    stopValidator();
+    await waitForValidatorExit(() => validatorExit);
+  }
 }
 
 const LOCAL_PROGRAMS = [
@@ -332,6 +337,17 @@ async function waitForHealth(
     await delay(1_000);
   }
   throw new Error("local fork validator did not become healthy within 120s");
+}
+
+async function waitForValidatorExit(
+  validatorExit: () => ValidatorExit | undefined,
+): Promise<void> {
+  for (let attempt = 0; attempt < 15; attempt += 1) {
+    if (validatorExit()) {
+      return;
+    }
+    await delay(1_000);
+  }
 }
 
 async function spawnChecked(
