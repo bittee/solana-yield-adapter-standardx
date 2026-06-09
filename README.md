@@ -1,37 +1,39 @@
 # Solana Yield Adapter Standard
 
-A Superteam Ukraine bounty implementation of a minimal Solana Yield Adapter
-Standard for routing deposits, withdrawals, and position valuation through a
-single dispatcher interface.
+SYAS is a reference implementation of a small adapter layer for Solana yield
+integrations. An application calls one dispatcher interface, and the selected
+adapter handles the protocol-specific accounts, CPI, custody, share accounting,
+and valuation.
 
-## About Superteam Ukraine
+The goal is to make yield integrations look the same at the application layer:
 
-Superteam Ukraine is focused on onboarding the next generation of developers and
-founders in Ukraine into the Solana ecosystem. The community connects talented
-builders with opportunities across Solana.
+```text
+deposit
+withdraw
+current_value
+```
 
-## Mission
+Instead of every wallet, vault, or strategy app integrating Kamino, MarginFi,
+Jupiter, Maple, and Drift separately, SYAS defines a common route through a
+dispatcher, a governance-gated registry, and independent protocol adapters.
 
-Create a reference implementation for a Solana Yield Adapter Standard, including:
+## What Is In This Repo
 
-- a core dispatcher contract
-- five reference adapters
-- an on-chain adapter registry
-- mainnet-fork tests
-- developer documentation and adapter specification
-
-## Tech Stack
-
-- Solana `2.2.20`
-- Anchor `0.31.1`
-- Rust
-- TypeScript
+- Anchor dispatcher program with protocol-agnostic routing.
+- Anchor registry program with governance-gated adapter approval.
+- Five independent adapter programs:
+  - Kamino USDC
+  - MarginFi USDC
+  - Jupiter JLP
+  - Maple Syrup exposure
+  - Drift Insurance Fund
+- TypeScript SDK helpers for program ids, PDAs, and adapter routes.
+- Strict mainnet-fork runner for live protocol-state tests.
+- Developer specification and "build your own adapter" guide.
+- Submission gate script that runs local checks, devnet registry verification,
+  and fork tests.
 
 ## Architecture
-
-Applications integrate with one dispatcher. The dispatcher validates the adapter
-through the registry and routes the request to the selected adapter. Protocol
-logic stays inside adapter programs.
 
 ```text
 Application
@@ -41,13 +43,22 @@ Application
       -> Yield Protocol
 ```
 
-The dispatcher is protocol-agnostic. The registry is governance-gated and never
-holds user funds. Each adapter is independently testable and owns its
-protocol-specific account validation, CPI, custody, and valuation logic.
+The dispatcher does only routing and admission control. It checks that the
+adapter is registered, enabled, and supports the requested base mint. It does not
+parse protocol accounts, calculate yield, hold user funds, or branch on protocol
+type.
+
+The registry stores one adapter-entry PDA per adapter program id. Governance can
+register, enable, disable, and transfer registry ownership. The registry never
+holds strategy assets.
+
+Adapters own the protocol-specific logic. Each adapter validates its remaining
+accounts, checks token mints and PDA relationships, performs the protocol CPI,
+records position units, and reports value in base-mint minor units.
 
 ## Standard Interface
 
-Every adapter exposes the same three-method interface:
+Every adapter implements the same application-facing surface:
 
 ```rust
 deposit(...)
@@ -55,69 +66,48 @@ withdraw(...)
 current_value(...)
 ```
 
-- `deposit`: allocate assets into a strategy
-- `withdraw`: redeem assets from a strategy
-- `current_value`: return current position value in base-mint minor units
+`deposit` moves base assets into the adapter strategy and records position units.
+`withdraw` redeems position units back to base assets or starts the protocol
+cooldown flow. `current_value` reads live protocol state and returns the current
+position value.
+
+Detailed semantics are in [docs/standard.md](docs/standard.md).
 
 ## Programs
 
-| Program               | Path                              | Purpose                                                                 |
-| --------------------- | --------------------------------- | ----------------------------------------------------------------------- |
-| Dispatcher            | `programs/dispatcher`             | Routes `deposit`, `withdraw`, and `current_value` to approved adapters. |
-| Registry              | `programs/registry`               | Stores governance-approved adapter entries and status.                  |
-| Kamino USDC Adapter   | `programs/adapters/kamino-usdc`   | USDC yield route for Kamino Finance.                                    |
-| MarginFi USDC Adapter | `programs/adapters/marginfi-usdc` | USDC lending route for MarginFi.                                        |
-| Jupiter JLP Adapter   | `programs/adapters/jupiter-jlp`   | USDC entry into Jupiter LP/JLP exposure.                                |
-| Maple Syrup Adapter   | `programs/adapters/maple-syrup`   | USDC entry into Maple Syrup exposure.                                   |
-| Drift IF Adapter      | `programs/adapters/drift-if`      | Drift Insurance Fund route.                                             |
+| Program               | Path                              | Role                                                               |
+| --------------------- | --------------------------------- | ------------------------------------------------------------------ |
+| Dispatcher            | `programs/dispatcher`             | Single route entrypoint for apps.                                  |
+| Registry              | `programs/registry`               | Governance-controlled adapter directory.                           |
+| Kamino USDC Adapter   | `programs/adapters/kamino-usdc`   | KLend USDC reserve route.                                          |
+| MarginFi USDC Adapter | `programs/adapters/marginfi-usdc` | MarginFi USDC bank route.                                          |
+| Jupiter JLP Adapter   | `programs/adapters/jupiter-jlp`   | USDC to JLP liquidity route.                                       |
+| Maple Syrup Adapter   | `programs/adapters/maple-syrup`   | USDC to syrupUSDC exposure route.                                  |
+| Drift IF Adapter      | `programs/adapters/drift-if`      | Drift Insurance Fund staking route with cooldown-aware withdrawal. |
 
-## On-Chain Registry
+## Repository Layout
 
-The registry supports:
-
-- governance-controlled initialization
-- adapter registration
-- adapter enable/disable
-- governance transfer
-
-Each adapter entry is stored in its own PDA keyed by adapter program id. The
-dispatcher checks the registry entry before routing, and adapters also re-check
-their registry entry on direct calls.
-
-## Mainnet-Fork Tests
-
-The strict fork runner is implemented in `scripts/mainnet-fork/run.ts`.
-
-It:
-
-- requires `MAINNET_RPC_URL`
-- builds SBF artifacts with `anchor build --no-idl`
-- starts `solana-test-validator` from mainnet state
-- clones required protocol programs and accounts
-- loads local dispatcher, registry, and adapter programs with `--bpf-program`
-- runs the adapter round-trip suite in `tests/mainnet-fork/roundtrip.spec.ts`
-- writes fork evidence to `target/syas-mainnet-fork-evidence.json`
-
-Run:
-
-```bash
-MAINNET_RPC_URL=<mainnet-rpc> npm run test:fork
+```text
+programs/
+  dispatcher/
+  registry/
+  adapters/
+    kamino-usdc/
+    marginfi-usdc/
+    jupiter-jlp/
+    maple-syrup/
+    drift-if/
+sdk/
+scripts/
+  bounty/
+  devnet/
+  mainnet-fork/
+tests/
+  mainnet-fork/
+docs/
 ```
 
-## Developer Documentation
-
-- [Adapter Standard](docs/standard.md)
-- [Architecture](docs/architecture.md)
-- [Build Your Own Adapter](docs/build-your-own-adapter.md)
-- [Protocol Notes](docs/protocol-notes.md)
-- [Mainnet Fork Tests](docs/mainnet-fork-tests.md)
-- [Bounty Submission Runbook](docs/submission.md)
-
-The adapter guide is written so a Solana team can implement a new adapter in
-less than one day by following the standard account prefix, registry checks, PDA
-model, and test requirements.
-
-## Quick Start
+## Main Commands
 
 ```bash
 npm install
@@ -127,11 +117,38 @@ npm test
 npm run build
 ```
 
-`npm run build` uses `anchor build --no-idl`.
+`npm run build` runs `anchor build --no-idl`, which is the build path used by the
+fork runner and bounty gate.
 
-## Devnet Registry Deployment
+`npm test` runs fast TypeScript/conformance tests. Strict mainnet-fork adapter
+round trips are intentionally separate because they require Solana CLI,
+`solana-test-validator`, Anchor, and a mainnet RPC.
 
-The bounty requires the registry contract to be deployed to devnet.
+## Mainnet-Fork Tests
+
+The strict fork runner lives at [scripts/mainnet-fork/run.ts](scripts/mainnet-fork/run.ts).
+It builds local SBF artifacts, starts `solana-test-validator` from mainnet state,
+clones required protocol accounts, loads local programs with `--bpf-program`,
+and runs [tests/mainnet-fork/roundtrip.spec.ts](tests/mainnet-fork/roundtrip.spec.ts).
+
+```bash
+export MAINNET_RPC_URL="<mainnet-rpc>"
+npm run test:fork
+```
+
+On success, the runner writes:
+
+```text
+target/syas-mainnet-fork-evidence.json
+```
+
+That file records the fork slot, local validator URL, payer, and program ids used
+for the test run.
+
+## Devnet Registry
+
+The registry program is the only program that must be deployed to devnet for the
+submission package.
 
 ```bash
 export ANCHOR_WALLET="$HOME/.config/solana/id.json"
@@ -143,21 +160,31 @@ npm run deploy:registry:devnet
 npm run verify:registry:devnet
 ```
 
-If the original registry program keypair is not available, generate and sync a
-new local program id set:
+If the matching registry keypair is not available, generate a new local program
+id set and commit the synchronized public id changes:
 
 ```bash
 npm run keys:sync
 npm run keys:ids:check
 ```
 
-Commit the synchronized public id changes if `keys:sync` is used. Do not commit
-program keypairs.
+Do not commit `program-keypairs/` or `target/deploy/*-keypair.json`.
 
-## Final Bounty Gate
+## Final Verification Gate
 
-Run this from the Linux environment that has Anchor, Solana CLI, and
-`solana-test-validator` installed:
+`npm run bounty:check` is the full submission gate. It runs the local Rust and
+TypeScript checks, verifies required tool versions, checks the devnet registry,
+and executes strict mainnet-fork tests.
+
+Run it from a Linux environment with:
+
+- Solana CLI `2.2.20`
+- `solana-test-validator` `2.2.20`
+- Anchor CLI `0.31.1`
+- Rust with `rustfmt` and `clippy`
+- Node.js dependencies installed
+- funded devnet wallet
+- mainnet RPC URL
 
 ```bash
 export ANCHOR_WALLET="$HOME/.config/solana/id.json"
@@ -173,63 +200,26 @@ npm run test:fork
 npm run bounty:check
 ```
 
-The final submission should include:
+The useful submission artifacts are:
 
 - public GitHub repository URL
-- devnet registry program id and registry PDA
-- successful `npm run verify:registry:devnet` output
-- successful `npm run test:fork` output
-- successful `npm run bounty:check` output
+- devnet registry program id
+- devnet registry PDA
+- `npm run verify:registry:devnet` output
+- `npm run test:fork` output
+- `npm run bounty:check` output
 - `target/syas-mainnet-fork-evidence.json`
 
-## Bounty Scope
+## Documentation
 
-### Core Dispatcher Contract
+- [Adapter Standard](docs/standard.md)
+- [Architecture](docs/architecture.md)
+- [Build Your Own Adapter](docs/build-your-own-adapter.md)
+- [Protocol Notes](docs/protocol-notes.md)
+- [Mainnet Fork Tests](docs/mainnet-fork-tests.md)
+- [Bounty Submission Runbook](docs/submission.md)
 
-Anchor program that routes a standardized interface:
-
-- `deposit`
-- `withdraw`
-- `current_value`
-
-### Five Reference Adapters
-
-- Kamino USDC
-- MarginFi USDC
-- Jupiter LP/JLP
-- Maple Syrup
-- Drift Insurance Fund
-
-### On-Chain Adapter Registry
-
-Governance-gated adapter approval, enable, and disable mechanism.
-
-### Mainnet-Fork Tests
-
-Integration tests for all five adapters against mainnet state.
-
-### Developer Specification
-
-Markdown specification and "Build your own adapter" guide.
-
-## Submission Requirements
-
-- Public GitHub repository containing all source code
-- All five adapters passing mainnet-fork tests
-- Registry contract deployed to devnet
-- Adapter standard specification in markdown format
-- "How to build your own adapter" developer guide
-
-## Judging Criteria
-
-| Category                                              | Weight |
-| ----------------------------------------------------- | -----: |
-| Correctness: adapters function against mainnet fork   |    40% |
-| Interface design: clean, minimal, extensible standard |    25% |
-| Developer guide quality                               |    20% |
-| Code quality and test coverage                        |    15% |
-
-## Reward Structure
-
-- 1st Place: 700 USDC
-- 2nd Place: 300 USDC
+The adapter guide focuses on the path for a new Solana team to implement a new
+adapter quickly: use the standard account prefix, validate the registry entry,
+derive adapter-owned PDAs, implement the three standard methods, and add
+mainnet-fork coverage.
