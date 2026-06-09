@@ -286,7 +286,7 @@ fn initialize_drift_accounts_if_needed(ctx: &Context<StandardOp>) -> Result<()> 
         .account(
             ctx.accounts.position_authority.to_account_info(),
             false,
-            false,
+            true,
         )
         .account(ctx.accounts.owner.to_account_info(), true, true)
         .account(ctx.accounts.rent.to_account_info(), false, false)
