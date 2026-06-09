@@ -1,0 +1,2 @@
+# Solana Yield Adapter Standard
+
