@@ -30,7 +30,7 @@ async function main(): Promise<void> {
 
   assertProgramKeypair();
 
-  run("anchor build");
+  run("anchor build --no-idl");
   run("anchor deploy --provider.cluster devnet --program-name registry");
 
   const connection = devnetConnection();

@@ -259,6 +259,11 @@ Fork caveats:
 - Do not claim native Maple Solana mint/redeem unless verified against the
   deployed program and a live fork.
 - Label DEX exposure clearly as Maple Syrup exposure, not native Maple lending.
+- The derived Whirlpool oracle PDA for the configured pool currently is not
+  returned by mainnet RPC. The strict fork runner provides an empty system-owned
+  startup fixture for that account, matching Whirlpool's uninitialized-oracle
+  branch, but this is not correctness evidence by itself. Submit the Maple route
+  only with successful strict fork round-trip logs.
 - Run clock-warping tests after oracle-sensitive Maple/Jupiter tests, because
   time travel can make short-lived feeds stale.
 
@@ -316,7 +321,7 @@ Validation focus:
 - spot market index and mint
 - insurance fund vault
 - insurance fund stake account authority
- 
+
 Implemented tail after the standard prefix:
 
 ```text
@@ -330,6 +335,7 @@ Implemented tail after the standard prefix:
 16. rent sysvar
 17. Drift program
 ```
+
 - user stats account
 - oracle if required by the path
 

@@ -101,7 +101,7 @@ function main(): void {
 
   requireEnv("MAINNET_RPC_URL");
 
-  run("anchor build");
+  run("anchor build --no-idl");
   run("npm run verify:registry:devnet");
   run("npm run test:fork", { RUN_MAINNET_FORK_TESTS: "1" });
 }

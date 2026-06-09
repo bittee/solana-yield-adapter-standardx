@@ -6,8 +6,9 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import {
-  MAINNET_CLONES,
   EXTERNAL_PROGRAMS,
+  LOCAL_ACCOUNT_FIXTURES,
+  MAINNET_CLONES,
   PATCHED_DOVES_ACCOUNTS,
   TOKEN_PROGRAM_ID,
 } from "./accounts.js";
@@ -28,6 +29,8 @@ const LEDGER_DIR = join(WORK_DIR, "ledger");
 const PAYER_PATH = join(WORK_DIR, "payer.json");
 const EVIDENCE_PATH = resolve("target/syas-mainnet-fork-evidence.json");
 const OWNER_USDC_AMOUNT = 1_000_000_000_000n;
+
+type ValidatorExit = { code: number | null; signal: NodeJS.Signals | null };
 
 async function main(): Promise<void> {
   const mainnetRpc = process.env.MAINNET_RPC_URL;
@@ -56,6 +59,7 @@ async function main(): Promise<void> {
   );
 
   const patchedAccounts = await writePatchedDovesAccounts(mainnetConnection);
+  const localAccountFixtures = await writeLocalAccountFixtures();
   await spawnChecked("anchor", ["build", "--no-idl"]);
   assertProgramArtifacts();
 
@@ -81,6 +85,11 @@ async function main(): Promise<void> {
       pubkey.toBase58(),
       path,
     ]),
+    ...localAccountFixtures.flatMap(({ pubkey, path }) => [
+      "--account",
+      pubkey.toBase58(),
+      path,
+    ]),
     ...LOCAL_PROGRAMS.flatMap((program) => [
       "--bpf-program",
       EXPECTED_PROGRAM_IDS[program].toBase58(),
@@ -91,6 +100,10 @@ async function main(): Promise<void> {
   const validator = spawn("solana-test-validator", validatorArgs, {
     cwd: process.cwd(),
     stdio: "inherit",
+  });
+  let validatorExit: ValidatorExit | undefined;
+  validator.on("exit", (code, signal) => {
+    validatorExit = { code, signal };
   });
 
   const stopValidator = (): void => {
@@ -108,7 +121,7 @@ async function main(): Promise<void> {
     process.exit(143);
   });
 
-  await waitForHealth();
+  await waitForHealth(() => validatorExit);
   await spawnChecked("solana", [
     "airdrop",
     "1000",
@@ -164,7 +177,7 @@ function assertProgramArtifacts(): void {
     const path = `target/deploy/${program}.so`;
     if (!existsSync(path)) {
       throw new Error(
-        `${path} is missing. Run anchor build before running strict fork tests.`,
+        `${path} is missing. Run anchor build --no-idl before running strict fork tests.`,
       );
     }
   }
@@ -213,12 +226,13 @@ async function writePatchedDovesAccounts(
       path,
       JSON.stringify(
         {
+          pubkey: pubkey.toBase58(),
           account: {
             lamports: info.lamports,
             data: [data.toString("base64"), "base64"],
             owner: info.owner.toBase58(),
             executable: info.executable,
-            rentEpoch: info.rentEpoch,
+            rentEpoch: safeRentEpoch(info.rentEpoch),
           },
         },
         null,
@@ -229,6 +243,43 @@ async function writePatchedDovesAccounts(
   }
 
   return out;
+}
+
+async function writeLocalAccountFixtures(): Promise<
+  Array<{ pubkey: PublicKey; path: string }>
+> {
+  const out: Array<{ pubkey: PublicKey; path: string }> = [];
+
+  for (const fixture of LOCAL_ACCOUNT_FIXTURES) {
+    const path = join(WORK_DIR, `${fixture.pubkey.toBase58()}.json`);
+    const data = Buffer.alloc(fixture.dataLength);
+    await writeFile(
+      path,
+      JSON.stringify(
+        {
+          pubkey: fixture.pubkey.toBase58(),
+          account: {
+            lamports: fixture.lamports,
+            data: [data.toString("base64"), "base64"],
+            owner: fixture.owner.toBase58(),
+            executable: fixture.executable ?? false,
+            rentEpoch: fixture.rentEpoch ?? 0,
+          },
+        },
+        null,
+        2,
+      ),
+    );
+    out.push({ pubkey: fixture.pubkey, path });
+  }
+
+  return out;
+}
+
+function safeRentEpoch(rentEpoch: number | undefined): number {
+  return typeof rentEpoch === "number" && Number.isSafeInteger(rentEpoch)
+    ? rentEpoch
+    : 0;
 }
 
 async function writeEvidence(
@@ -254,8 +305,17 @@ async function writeEvidence(
   console.log(`mainnet fork evidence: ${EVIDENCE_PATH}`);
 }
 
-async function waitForHealth(): Promise<void> {
-  for (let attempt = 0; attempt < 60; attempt += 1) {
+async function waitForHealth(
+  validatorExit: () => ValidatorExit | undefined,
+): Promise<void> {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    const exit = validatorExit();
+    if (exit) {
+      throw new Error(
+        `local fork validator exited before becoming healthy: code=${exit.code ?? "<null>"} signal=${exit.signal ?? "<null>"}`,
+      );
+    }
+
     try {
       const response = await fetch(LOCAL_URL, {
         method: "POST",
@@ -271,7 +331,7 @@ async function waitForHealth(): Promise<void> {
     }
     await delay(1_000);
   }
-  throw new Error("local fork validator did not become healthy");
+  throw new Error("local fork validator did not become healthy within 120s");
 }
 
 async function spawnChecked(

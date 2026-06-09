@@ -122,6 +122,8 @@ The strict runner:
   `--bpf-program` using the checked-in program ids;
 - injects a deterministic funded USDC token account for the test wallet;
 - patches Doves oracle timestamps before validator startup;
+- injects documented local fixtures for required accounts that the current
+  mainnet RPC reports as absent, currently the derived Maple Whirlpool oracle;
 - runs `tests/mainnet-fork/roundtrip.spec.ts` with
   `RUN_MAINNET_FORK_TESTS=1`.
 
@@ -156,6 +158,11 @@ Maple:
 - Native Maple Solana mint/redeem needs deployed-program proof before being
   reported as implemented.
 - DEX exposure tests should be labeled as DEX exposure.
+- The configured Whirlpool oracle PDA currently returns `AccountNotFound` from
+  mainnet RPC, so the runner injects an empty system-owned startup fixture for
+  that account. Whirlpool treats this as an uninitialized oracle account. This
+  only gets the fork validator past cloning; successful Maple round-trip logs
+  are still required before claiming adapter correctness.
 
 Drift:
 

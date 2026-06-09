@@ -20,6 +20,7 @@ import {
   JUPITER,
   KAMINO,
   kaminoMarketAuthority,
+  LOCAL_ACCOUNT_FIXTURES,
   MAINNET_CLONES,
   MAPLE,
   mapleOracle,
@@ -120,6 +121,27 @@ describe("mainnet-fork account plan", () => {
 
     if (cloneSet.size !== MAINNET_CLONES.length) {
       throw new Error("clone list contains duplicate pubkeys");
+    }
+  });
+
+  it("documents local fixtures for required accounts absent from mainnet", () => {
+    const fixtureSet = new Set(
+      LOCAL_ACCOUNT_FIXTURES.map((fixture) => fixture.pubkey.toBase58()),
+    );
+    const cloneSet = new Set(MAINNET_CLONES.map((key) => key.toBase58()));
+    const missingMapleOracle = mapleOracle().toBase58();
+
+    if (!fixtureSet.has(missingMapleOracle)) {
+      throw new Error(
+        `missing local fixture for absent Maple oracle ${missingMapleOracle}`,
+      );
+    }
+
+    for (const fixture of LOCAL_ACCOUNT_FIXTURES) {
+      const fixtureKey = fixture.pubkey.toBase58();
+      if (cloneSet.has(fixtureKey)) {
+        throw new Error(`local fixture must not also be cloned: ${fixtureKey}`);
+      }
     }
   });
 

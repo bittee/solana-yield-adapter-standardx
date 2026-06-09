@@ -1,5 +1,6 @@
 import {
   PublicKey,
+  SystemProgram,
   SYSVAR_INSTRUCTIONS_PUBKEY,
   SYSVAR_RENT_PUBKEY,
 } from "@solana/web3.js";
@@ -120,6 +121,15 @@ export function mapleOracle(): PublicKey {
   )[0];
 }
 
+export type LocalAccountFixture = {
+  pubkey: PublicKey;
+  owner: PublicKey;
+  lamports: number;
+  dataLength: number;
+  executable?: boolean;
+  rentEpoch?: number;
+};
+
 export const DRIFT = {
   adapter: DRIFT_IF_ADAPTER_PROGRAM_ID,
   protocolVariant: 5,
@@ -201,12 +211,20 @@ export const MAINNET_CLONES = uniquePubkeys([
   MAPLE.buyTickArray2,
   MAPLE.sellTickArray1,
   MAPLE.sellTickArray2,
-  mapleOracle(),
   driftState(),
   driftSpotMarket(),
   driftSpotMarketVault(),
   driftInsuranceFundVault(),
 ]);
+
+export const LOCAL_ACCOUNT_FIXTURES: readonly LocalAccountFixture[] = [
+  {
+    pubkey: mapleOracle(),
+    owner: SystemProgram.programId,
+    lamports: 1_000_000,
+    dataLength: 0,
+  },
+] as const;
 
 export const PATCHED_DOVES_ACCOUNTS = uniquePubkeys([
   JUPITER.usdcDovesPrice,

@@ -155,6 +155,7 @@ describe("SYAS bounty conformance preflight", () => {
       "MAINNET_RPC_URL",
       "RUN_MAINNET_FORK_TESTS",
       "keys:ids:check",
+      "anchor build --no-idl",
       "anchor --version",
       "solana --version",
       "npm run test:fork",
@@ -169,6 +170,11 @@ describe("SYAS bounty conformance preflight", () => {
     const runner = read("scripts/mainnet-fork/run.ts");
     if (!runner.includes("--bpf-program")) {
       throw new Error("strict fork runner must load local programs by id");
+    }
+    if (!runner.includes("LOCAL_ACCOUNT_FIXTURES")) {
+      throw new Error(
+        "strict fork runner must declare documented local account fixtures",
+      );
     }
     if (runner.includes("program-id")) {
       throw new Error(

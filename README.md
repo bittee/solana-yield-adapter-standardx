@@ -82,7 +82,8 @@ Before submitting this bounty, do **all** of the following and include logs:
 - [x] Run TypeScript type checking with `npm run typecheck`.
 - [x] Keep tests explicit about environment requirements instead of silently
       pretending fork coverage ran.
-- [ ] Install/use Anchor `0.31.1` and run `anchor build` successfully.
+- [ ] Install/use Anchor `0.31.1` and run `anchor build --no-idl`
+      successfully.
 - [ ] Run `npm run keys:ids:check` before submission. If the registry program id
       must change, run `npm run keys:sync` and commit the synchronized public id
       changes across Anchor/Rust/SDK/docs.
@@ -99,8 +100,8 @@ Before submitting this bounty, do **all** of the following and include logs:
 - [ ] For Maple, submit it explicitly as a syrupUSDC exposure adapter and include
       successful fork logs for the documented liquidity route.
 - [ ] Re-run `cargo fmt --all -- --check`, `cargo test --workspace --all-targets`,
-      `npm run typecheck`, `npm test`, `anchor build`, and `npm run test:fork`
-      before final submission.
+      `npm run typecheck`, `npm test`, `anchor build --no-idl`, and
+      `npm run test:fork` before final submission.
 
 ## Useful Commands
 
@@ -120,7 +121,7 @@ npm run deploy:registry:devnet
 npm run verify:registry:devnet
 npm run bounty:check
 MAINNET_RPC_URL=<mainnet-rpc> npm run test:fork
-anchor build
+anchor build --no-idl
 ```
 
 `npm test` intentionally keeps strict mainnet-fork adapter round trips pending
@@ -137,6 +138,6 @@ keypair files.
 
 `npm run bounty:check` is the submission gate. It runs all local Rust and
 TypeScript checks, then requires the Solana CLI, `solana-test-validator`, Anchor
-CLI, and `MAINNET_RPC_URL` before executing `anchor build` and strict fork
+CLI, and `MAINNET_RPC_URL` before executing `anchor build --no-idl` and strict fork
 roundtrips. A bounty submission should include the full successful output of that
 command.

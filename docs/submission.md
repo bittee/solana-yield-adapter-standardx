@@ -21,6 +21,12 @@ Before deploying, ensure the registry program keypair exists locally and its
 public key equals the registry id in `programs/registry/src/lib.rs`,
 `Anchor.toml`, and `sdk/src/index.ts`.
 
+This workspace builds deployable SBF artifacts with Anchor's no-IDL path:
+
+```bash
+anchor build --no-idl
+```
+
 If you do not already have the registry program keypair, generate a new local
 set and synchronize all checked-in public ids:
 
@@ -57,6 +63,7 @@ Run the full gate from a clean checkout:
 ```bash
 npm install
 npm run keys:ids:check
+anchor build --no-idl
 MAINNET_RPC_URL=<mainnet-rpc> npm run bounty:check
 ```
 
