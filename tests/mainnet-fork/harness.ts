@@ -247,7 +247,7 @@ export const ADAPTER_SPECS: ForkAdapterSpec[] = [
     receiptMint: KAMINO.reserveCollateralMint,
     amountIn: 1_000_000n,
     tail: (ctx) => [
-      writable(false, KAMINO.reserveCollateralMint),
+      writable(true, KAMINO.reserveCollateralMint),
       writable(true, requiredReceipt(ctx, "Kamino")),
       writable(true, KAMINO.reserve),
       writable(false, KAMINO.lendingMarket),
