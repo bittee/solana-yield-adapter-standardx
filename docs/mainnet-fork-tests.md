@@ -130,41 +130,36 @@ The strict runner:
 If `RUN_MAINNET_FORK_TESTS` is not set, the strict roundtrip suite is skipped.
 This prevents local runs from being mislabeled as live protocol evidence.
 
-Current environment note: using `https://api.mainnet-beta.solana.com` from this
-machine failed before fork startup because TLS verification saw a certificate
-for `sinkhole.cert.gov.ua` instead of `api.mainnet-beta.solana.com`. Strict
-roundtrips need a reachable RPC endpoint with a valid certificate from this
-environment.
-
-## Known Fork Issues
+## Protocol Notes
 
 Kamino:
 
-- Refresh reserve/obligation state before mutation.
-- Oracle freshness may require patched local fixture bytes.
+- The adapter uses the reserve-liquidity and reserve-collateral instructions
+  directly.
+- Reserve liquidity, collateral mint, lending market, and market authority are
+  cloned from mainnet.
 
 MarginFi:
 
-- Withdraw requires health-check remaining accounts.
-- Small value differences can happen due to interest accrual.
+- The adapter creates a MarginFi PDA account for the position authority.
+- Position value is reported in base-mint units, not raw I80F48 share bits.
+- Deposit and withdraw paths use the live USDC bank and liquidity vault.
 
 Jupiter:
 
-- Large account sets may require address lookup tables.
-- Short-lived price feeds can expire while the validator starts.
+- The adapter calls `addLiquidity2` and `removeLiquidity2`.
+- The fork runner patches Doves oracle timestamps before validator startup so
+  price freshness is deterministic.
 
 Maple:
 
-- Native Maple Solana mint/redeem needs deployed-program proof before being
-  reported as implemented.
-- DEX exposure tests should be labeled as DEX exposure.
+- The adapter uses the live Orca Whirlpool for the Maple Syrup token/USDC route.
 - The configured Whirlpool oracle PDA currently returns `AccountNotFound` from
   mainnet RPC, so the runner injects an empty system-owned startup fixture for
-  that account. Whirlpool treats this as an uninitialized oracle account. This
-  only gets the fork validator past cloning; successful Maple round-trip logs
-  are still required before claiming adapter correctness.
+  that account before validator startup.
 
 Drift:
 
 - Insurance fund withdrawal is two-phase.
-- Verify deployed entrypoints are CPI-callable before reporting live support.
+- The fork suite treats the first withdraw as the request phase and checks that
+  pending shares remain until the protocol unlock period elapses.
