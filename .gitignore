@@ -5,6 +5,7 @@ program-keypairs/
 dist/
 .env
 *.log
+biter.txt
 programs/**/target/
 test-ledger/
 coverage/
