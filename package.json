@@ -1,0 +1,29 @@
+{
+  "name": "solana-yield-adapter-standard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "anchor build",
+    "test": "node --import tsx ./node_modules/mocha/bin/mocha.js --timeout 1000000 \"tests/**/*.ts\"",
+    "test:fork": "node --import tsx scripts/mainnet-fork/run.ts",
+    "test:anchor": "anchor test",
+    "fmt": "cargo fmt --all && prettier --write \"{tests,sdk,scripts}/**/*.{ts,js,json}\" \"*.json\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "0.31.1",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.95.8",
+    "bn.js": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/bn.js": "^5.1.6",
+    "@types/node": "^22.10.2",
+    "mocha": "^11.0.1",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

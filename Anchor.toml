@@ -1,0 +1,26 @@
+[toolchain]
+anchor_version = "0.31.1"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+dispatcher = "HGj3chDufhrN3LZE31jjK9Kv4ETzmzkxHwxDQKCzUrk"
+registry = "5VkZ8ibMyrwzJWsybHqXPQ29z7e6eRdaYph4iCPdCQsb"
+mock_adapter = "8p7m5zPd9S52CXnEzNu3JBVqraUSwyktF4JWYaaphmEr"
+kamino_usdc_adapter = "E1bTG9vyE27xVay1oZrZck6idNJZjgotaeFia1P7q9Vb"
+marginfi_usdc_adapter = "CEy21HbuzU6K9WLueUwXtjeiLicVhyMLPtkMHXEzccXu"
+jupiter_jlp_adapter = "4A1xkP49MszrDZE3Pzzq6a69tNprr3X799NitbAy7RmN"
+maple_syrup_adapter = "7Bw1gXZzHz1RFD1FBkqGbAfVoBTz5CYk73QQkzjw8NWf"
+drift_if_adapter = "BemVwXxgBf71TXQQrWJH61SR1oodD7tPzX8LFymeB6tM"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "npm run test"

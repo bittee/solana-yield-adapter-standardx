@@ -1,0 +1,10 @@
+target/
+.anchor/
+node_modules/
+dist/
+.env
+*.log
+programs/**/target/
+test-ledger/
+coverage/
+

@@ -1,0 +1,223 @@
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { spawn } from "node:child_process";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
+import { MAINNET_CLONES, EXTERNAL_PROGRAMS, PATCHED_DOVES_ACCOUNTS, TOKEN_PROGRAM_ID } from "./accounts.js";
+import { USDC_MINT } from "../../sdk/src/index.js";
+
+const LOCAL_URL = "http://127.0.0.1:8899";
+const WORK_DIR = "/tmp/syas-mainnet-fork";
+const LEDGER_DIR = join(WORK_DIR, "ledger");
+const PAYER_PATH = join(WORK_DIR, "payer.json");
+const OWNER_USDC_AMOUNT = 1_000_000_000_000n;
+
+async function main(): Promise<void> {
+  const mainnetRpc = process.env.MAINNET_RPC_URL;
+  if (!mainnetRpc) {
+    throw new Error("MAINNET_RPC_URL is required for strict mainnet-fork tests");
+  }
+
+  await rm(WORK_DIR, { recursive: true, force: true });
+  await mkdir(WORK_DIR, { recursive: true });
+
+  const payer = deterministicPayer();
+  await writeFile(PAYER_PATH, JSON.stringify(Array.from(payer.secretKey)));
+  const ownerTokenAccount = getAssociatedTokenAddressSync(USDC_MINT, payer.publicKey, false);
+  const ownerTokenPath = join(WORK_DIR, "owner-usdc.json");
+  await writeFile(ownerTokenPath, JSON.stringify(tokenAccountFixture(payer.publicKey), null, 2));
+
+  const patchedAccounts = await writePatchedDovesAccounts(mainnetRpc);
+  await spawnChecked("anchor", ["build", "--no-idl"]);
+
+  const validatorArgs = [
+    "--reset",
+    "--quiet",
+    "--ledger",
+    LEDGER_DIR,
+    "--url",
+    mainnetRpc,
+    ...EXTERNAL_PROGRAMS.flatMap((program) => ["--clone-upgradeable-program", program.toBase58()]),
+    ...MAINNET_CLONES.filter((key) => !PATCHED_DOVES_ACCOUNTS.some((patched) => patched.equals(key)))
+      .flatMap((account) => ["--clone", account.toBase58()]),
+    "--account",
+    ownerTokenAccount.toBase58(),
+    ownerTokenPath,
+    ...patchedAccounts.flatMap(({ pubkey, path }) => ["--account", pubkey.toBase58(), path]),
+  ];
+
+  const validator = spawn("solana-test-validator", validatorArgs, {
+    cwd: process.cwd(),
+    stdio: "inherit",
+  });
+
+  const stopValidator = (): void => {
+    if (!validator.killed) {
+      validator.kill("SIGTERM");
+    }
+  };
+  process.on("exit", stopValidator);
+  process.on("SIGINT", () => {
+    stopValidator();
+    process.exit(130);
+  });
+  process.on("SIGTERM", () => {
+    stopValidator();
+    process.exit(143);
+  });
+
+  await waitForHealth();
+  await spawnChecked("solana", ["airdrop", "1000", payer.publicKey.toBase58(), "--url", LOCAL_URL]);
+
+  for (const program of LOCAL_PROGRAMS) {
+    await spawnChecked("solana", [
+      "program",
+      "deploy",
+      "--url",
+      LOCAL_URL,
+      "--keypair",
+      PAYER_PATH,
+      "--program-id",
+      `target/deploy/${program}-keypair.json`,
+      `target/deploy/${program}.so`,
+    ]);
+  }
+
+  await spawnChecked(
+    "node",
+    [
+      "--import",
+      "tsx",
+      "./node_modules/mocha/bin/mocha.js",
+      "--timeout",
+      "1000000",
+      "tests/mainnet-fork/roundtrip.spec.ts",
+    ],
+    {
+      ANCHOR_PROVIDER_URL: LOCAL_URL,
+      ANCHOR_WALLET: PAYER_PATH,
+      RUN_MAINNET_FORK_TESTS: "1",
+      MAINNET_RPC_URL: mainnetRpc,
+    },
+  );
+}
+
+const LOCAL_PROGRAMS = [
+  "registry",
+  "dispatcher",
+  "kamino_usdc_adapter",
+  "marginfi_usdc_adapter",
+  "jupiter_jlp_adapter",
+  "maple_syrup_adapter",
+  "drift_if_adapter",
+] as const;
+
+function deterministicPayer(): Keypair {
+  return Keypair.fromSeed(Uint8Array.from(new Array(32).fill(7)));
+}
+
+function tokenAccountFixture(owner: PublicKey): unknown {
+  const data = Buffer.alloc(165);
+  USDC_MINT.toBuffer().copy(data, 0);
+  owner.toBuffer().copy(data, 32);
+  data.writeBigUInt64LE(OWNER_USDC_AMOUNT, 64);
+  data.writeUInt8(1, 108);
+
+  return {
+    pubkey: getAssociatedTokenAddressSync(USDC_MINT, owner, false).toBase58(),
+    account: {
+      lamports: 2_039_280,
+      data: [data.toString("base64"), "base64"],
+      owner: TOKEN_PROGRAM_ID.toBase58(),
+      executable: false,
+      rentEpoch: 0,
+    },
+  };
+}
+
+async function writePatchedDovesAccounts(
+  mainnetRpc: string,
+): Promise<Array<{ pubkey: PublicKey; path: string }>> {
+  const connection = new Connection(mainnetRpc, "confirmed");
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  const out: Array<{ pubkey: PublicKey; path: string }> = [];
+
+  for (const pubkey of PATCHED_DOVES_ACCOUNTS) {
+    const info = await connection.getAccountInfo(pubkey);
+    if (!info) {
+      throw new Error(`missing mainnet account ${pubkey.toBase58()}`);
+    }
+    const data = Buffer.from(info.data);
+    if (data.length > 185) {
+      data.writeBigInt64LE(now, 177);
+    }
+    const path = join(WORK_DIR, `${pubkey.toBase58()}.json`);
+    await writeFile(
+      path,
+      JSON.stringify(
+        {
+          account: {
+            lamports: info.lamports,
+            data: [data.toString("base64"), "base64"],
+            owner: info.owner.toBase58(),
+            executable: info.executable,
+            rentEpoch: info.rentEpoch,
+          },
+        },
+        null,
+        2,
+      ),
+    );
+    out.push({ pubkey, path });
+  }
+
+  return out;
+}
+
+async function waitForHealth(): Promise<void> {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    try {
+      const response = await fetch(LOCAL_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getHealth" }),
+      });
+      const body = (await response.json()) as { result?: string };
+      if (body.result === "ok") {
+        return;
+      }
+    } catch {
+      // validator is still booting
+    }
+    await delay(1_000);
+  }
+  throw new Error("local fork validator did not become healthy");
+}
+
+async function spawnChecked(
+  command: string,
+  args: string[],
+  env: Record<string, string> = {},
+): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: process.cwd(),
+      stdio: "inherit",
+      env: { ...process.env, ...env },
+    });
+    child.on("error", reject);
+    child.on("exit", (code, signal) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`${command} exited with ${code ?? signal}`));
+      }
+    });
+  });
+}
+
+main().catch((error: unknown) => {
+  console.error(error);
+  process.exit(1);
+});

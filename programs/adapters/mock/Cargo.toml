@@ -1,0 +1,25 @@
+[package]
+name = "mock-adapter"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "mock_adapter"
+
+[lints]
+workspace = true
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "syas-interface/idl-build", "syas-registry/idl-build"]
+
+[dependencies]
+anchor-lang = { workspace = true, features = ["init-if-needed"] }
+syas-interface = { workspace = true }
+syas-registry = { workspace = true }

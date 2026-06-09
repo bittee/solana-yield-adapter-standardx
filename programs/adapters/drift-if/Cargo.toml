@@ -1,0 +1,33 @@
+[package]
+name = "drift-if-adapter"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "drift_if_adapter"
+
+[lints]
+workspace = true
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = [
+    "anchor-lang/idl-build",
+    "anchor-spl/idl-build",
+    "syas-interface/idl-build",
+    "syas-registry/idl-build",
+    "syas-adapter-utils/idl-build",
+]
+
+[dependencies]
+anchor-lang = { workspace = true, features = ["init-if-needed"] }
+anchor-spl = { workspace = true }
+syas-interface = { workspace = true }
+syas-registry = { workspace = true }
+syas-adapter-utils = { workspace = true }
