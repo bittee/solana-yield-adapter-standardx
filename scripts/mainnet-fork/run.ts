@@ -6,7 +6,12 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import {
+  DRIFT,
+  driftInsuranceFundStake,
+  driftSpotMarket,
+  driftUserStats,
   EXTERNAL_PROGRAMS,
+  JUPITER,
   LOCAL_ACCOUNT_FIXTURES,
   MAINNET_CLONES,
   PATCHED_DOVES_ACCOUNTS,
@@ -19,6 +24,8 @@ import {
   KAMINO_USDC_ADAPTER_PROGRAM_ID,
   MAPLE_SYRUP_ADAPTER_PROGRAM_ID,
   MARGINFI_USDC_ADAPTER_PROGRAM_ID,
+  positionAuthorityPda,
+  positionPda,
   REGISTRY_PROGRAM_ID,
   USDC_MINT,
 } from "../../sdk/src/index.js";
@@ -32,7 +39,19 @@ const OWNER_USDC_AMOUNT = 1_000_000_000_000n;
 const DOVES_TIMESTAMP_OFFSET = 177;
 const DOVES_MAX_AG_PRICE_AGE_OFFSET = 185;
 const DOVES_MAX_PRICE_FEED_AGE_OFFSET = 189;
-const DOVES_FORK_MAX_AGE_SECONDS = 86_400;
+const ORACLE_FORK_MAX_AGE_SECONDS = 259_200;
+const JUPITER_CUSTODY_MAX_PRICE_AGE_OFFSET = 147;
+const DRIFT_USER_STATS_ACCOUNT_DISCRIMINATOR = [
+  176, 223, 136, 27, 122, 79, 32, 227,
+];
+const DRIFT_IF_STAKE_ACCOUNT_DISCRIMINATOR = [110, 202, 14, 42, 95, 73, 90, 95];
+const DRIFT_USER_STATS_ACCOUNT_SIZE = 240;
+const DRIFT_IF_STAKE_ACCOUNT_SIZE = 136;
+const DRIFT_SPOT_MARKET_IF_BASE_OFFSET = 368;
+const DRIFT_IF_STAKE_AUTHORITY_OFFSET = 8;
+const DRIFT_IF_STAKE_IF_BASE_OFFSET = 72;
+const DRIFT_IF_STAKE_LAST_VALID_TS_OFFSET = 88;
+const DRIFT_IF_STAKE_MARKET_INDEX_OFFSET = 120;
 
 type ValidatorExit = { code: number | null; signal: NodeJS.Signals | null };
 
@@ -66,8 +85,11 @@ async function main(): Promise<void> {
   assertProgramArtifacts();
   printForkProgramMap();
   const forkSlot = await mainnetConnection.getSlot("confirmed");
-  const patchedAccounts = await writePatchedDovesAccounts(mainnetConnection);
-  const localAccountFixtures = await writeLocalAccountFixtures();
+  const patchedAccounts = await writePatchedMainnetAccounts(mainnetConnection);
+  const localAccountFixtures = await writeLocalAccountFixtures(
+    mainnetConnection,
+    payer.publicKey,
+  );
 
   const validatorArgs = [
     "--reset",
@@ -83,7 +105,7 @@ async function main(): Promise<void> {
       program.toBase58(),
     ]),
     ...MAINNET_CLONES.filter(
-      (key) => !PATCHED_DOVES_ACCOUNTS.some((patched) => patched.equals(key)),
+      (key) => !patchedAccounts.some((patched) => patched.pubkey.equals(key)),
     ).flatMap((account) => ["--clone", account.toBase58()]),
     "--account",
     ownerTokenAccount.toBase58(),
@@ -228,27 +250,43 @@ function tokenAccountFixture(owner: PublicKey): unknown {
   };
 }
 
-async function writePatchedDovesAccounts(
+async function writePatchedMainnetAccounts(
   connection: Connection,
 ): Promise<Array<{ pubkey: PublicKey; path: string }>> {
   const publishTime = BigInt(Math.floor(Date.now() / 1000));
   const out: Array<{ pubkey: PublicKey; path: string }> = [];
+  const patchedPubkeys = uniquePubkeys([
+    ...PATCHED_DOVES_ACCOUNTS,
+    ...JUPITER.custodies,
+  ]);
 
-  for (const pubkey of PATCHED_DOVES_ACCOUNTS) {
+  for (const pubkey of patchedPubkeys) {
     const info = await connection.getAccountInfo(pubkey);
     if (!info) {
       throw new Error(`missing mainnet account ${pubkey.toBase58()}`);
     }
     const data = Buffer.from(info.data);
-    if (data.length > DOVES_MAX_PRICE_FEED_AGE_OFFSET + 4) {
+    if (
+      PATCHED_DOVES_ACCOUNTS.some((patched) => patched.equals(pubkey)) &&
+      data.length > DOVES_MAX_PRICE_FEED_AGE_OFFSET + 4
+    ) {
       data.writeBigInt64LE(publishTime, DOVES_TIMESTAMP_OFFSET);
       data.writeUInt32LE(
-        DOVES_FORK_MAX_AGE_SECONDS,
+        ORACLE_FORK_MAX_AGE_SECONDS,
         DOVES_MAX_AG_PRICE_AGE_OFFSET,
       );
       data.writeUInt32LE(
-        DOVES_FORK_MAX_AGE_SECONDS,
+        ORACLE_FORK_MAX_AGE_SECONDS,
         DOVES_MAX_PRICE_FEED_AGE_OFFSET,
+      );
+    }
+    if (
+      JUPITER.custodies.some((custody) => custody.equals(pubkey)) &&
+      data.length > JUPITER_CUSTODY_MAX_PRICE_AGE_OFFSET + 4
+    ) {
+      data.writeUInt32LE(
+        ORACLE_FORK_MAX_AGE_SECONDS,
+        JUPITER_CUSTODY_MAX_PRICE_AGE_OFFSET,
       );
     }
     const path = join(WORK_DIR, `${pubkey.toBase58()}.json`);
@@ -275,34 +313,121 @@ async function writePatchedDovesAccounts(
   return out;
 }
 
-async function writeLocalAccountFixtures(): Promise<
-  Array<{ pubkey: PublicKey; path: string }>
-> {
+function uniquePubkeys(keys: readonly PublicKey[]): PublicKey[] {
+  const seen = new Set<string>();
+  const out: PublicKey[] = [];
+  for (const key of keys) {
+    const id = key.toBase58();
+    if (!seen.has(id)) {
+      seen.add(id);
+      out.push(key);
+    }
+  }
+  return out;
+}
+
+async function writeDriftForkFixtures(
+  connection: Connection,
+  owner: PublicKey,
+): Promise<Array<{ pubkey: PublicKey; path: string }>> {
+  const position = positionPda(DRIFT.adapter, owner, USDC_MINT);
+  const authority = positionAuthorityPda(DRIFT.adapter, position);
+  const spotMarketInfo = await connection.getAccountInfo(driftSpotMarket());
+  if (!spotMarketInfo) {
+    throw new Error(
+      `missing Drift spot market ${driftSpotMarket().toBase58()}`,
+    );
+  }
+  const ifBase = Buffer.from(
+    spotMarketInfo.data.subarray(
+      DRIFT_SPOT_MARKET_IF_BASE_OFFSET,
+      DRIFT_SPOT_MARKET_IF_BASE_OFFSET + 16,
+    ),
+  );
+  if (ifBase.length !== 16) {
+    throw new Error("Drift spot market account is too short for IF base");
+  }
+
+  const userStatsData = Buffer.alloc(DRIFT_USER_STATS_ACCOUNT_SIZE);
+  Buffer.from(DRIFT_USER_STATS_ACCOUNT_DISCRIMINATOR).copy(userStatsData, 0);
+  authority.toBuffer().copy(userStatsData, 8);
+
+  const ifStakeData = Buffer.alloc(DRIFT_IF_STAKE_ACCOUNT_SIZE);
+  Buffer.from(DRIFT_IF_STAKE_ACCOUNT_DISCRIMINATOR).copy(ifStakeData, 0);
+  authority.toBuffer().copy(ifStakeData, DRIFT_IF_STAKE_AUTHORITY_OFFSET);
+  ifBase.copy(ifStakeData, DRIFT_IF_STAKE_IF_BASE_OFFSET);
+  ifStakeData.writeBigInt64LE(
+    BigInt(Math.floor(Date.now() / 1000)),
+    DRIFT_IF_STAKE_LAST_VALID_TS_OFFSET,
+  );
+  ifStakeData.writeUInt16LE(0, DRIFT_IF_STAKE_MARKET_INDEX_OFFSET);
+
+  return Promise.all([
+    writeAccountFixture(
+      driftUserStats(authority),
+      DRIFT.program,
+      2_039_280,
+      userStatsData,
+    ),
+    writeAccountFixture(
+      driftInsuranceFundStake(authority),
+      DRIFT.program,
+      2_039_280,
+      ifStakeData,
+    ),
+  ]);
+}
+
+async function writeAccountFixture(
+  pubkey: PublicKey,
+  owner: PublicKey,
+  lamports: number,
+  data: Buffer,
+  executable = false,
+  rentEpoch = 0,
+): Promise<{ pubkey: PublicKey; path: string }> {
+  const path = join(WORK_DIR, `${pubkey.toBase58()}.json`);
+  await writeFile(
+    path,
+    JSON.stringify(
+      {
+        pubkey: pubkey.toBase58(),
+        account: {
+          lamports,
+          data: [data.toString("base64"), "base64"],
+          owner: owner.toBase58(),
+          executable,
+          rentEpoch,
+        },
+      },
+      null,
+      2,
+    ),
+  );
+  return { pubkey, path };
+}
+
+async function writeLocalAccountFixtures(
+  connection: Connection,
+  owner: PublicKey,
+): Promise<Array<{ pubkey: PublicKey; path: string }>> {
   const out: Array<{ pubkey: PublicKey; path: string }> = [];
 
   for (const fixture of LOCAL_ACCOUNT_FIXTURES) {
-    const path = join(WORK_DIR, `${fixture.pubkey.toBase58()}.json`);
     const data = Buffer.alloc(fixture.dataLength);
-    await writeFile(
-      path,
-      JSON.stringify(
-        {
-          pubkey: fixture.pubkey.toBase58(),
-          account: {
-            lamports: fixture.lamports,
-            data: [data.toString("base64"), "base64"],
-            owner: fixture.owner.toBase58(),
-            executable: fixture.executable ?? false,
-            rentEpoch: fixture.rentEpoch ?? 0,
-          },
-        },
-        null,
-        2,
+    out.push(
+      await writeAccountFixture(
+        fixture.pubkey,
+        fixture.owner,
+        fixture.lamports,
+        data,
+        fixture.executable ?? false,
+        fixture.rentEpoch ?? 0,
       ),
     );
-    out.push({ pubkey: fixture.pubkey, path });
   }
 
+  out.push(...(await writeDriftForkFixtures(connection, owner)));
   return out;
 }
 
