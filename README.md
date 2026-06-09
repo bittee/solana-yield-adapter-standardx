@@ -201,8 +201,9 @@ npm run bounty:check
 The submission should include:
 
 - this public GitHub repo
-- devnet registry program id
-- devnet registry PDA
+- devnet registry program id:
+  `BWTrd2xVhy2T12CLrr9ffy3StQtYdJtRWGejWLVtCd2p`
+- devnet registry PDA: `33qVn5v9GNtJJTpLCy2AeFvvbU3TuY1HWZgZv7nmntjW`
 - `npm run verify:registry:devnet` output
 - `npm run test:fork` output
 - `npm run bounty:check` output

@@ -51,8 +51,8 @@ npm run verify:registry:devnet
 
 Record these values in the submission:
 
-- registry program id
-- registry PDA
+- registry program id: `BWTrd2xVhy2T12CLrr9ffy3StQtYdJtRWGejWLVtCd2p`
+- registry PDA: `33qVn5v9GNtJJTpLCy2AeFvvbU3TuY1HWZgZv7nmntjW`
 - governance address
 - deployment and initialization signatures
 
