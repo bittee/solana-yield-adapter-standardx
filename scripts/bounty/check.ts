@@ -6,6 +6,7 @@ type Check = {
 };
 
 const localChecks: readonly Check[] = [
+  { command: "npm run keys:ids:check" },
   { command: "cargo fmt --all -- --check" },
   { command: "cargo check --workspace --all-targets" },
   { command: "cargo test --workspace --all-targets" },

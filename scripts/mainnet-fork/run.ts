@@ -1,7 +1,7 @@
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -39,7 +39,6 @@ async function main(): Promise<void> {
 
   await rm(WORK_DIR, { recursive: true, force: true });
   await mkdir(WORK_DIR, { recursive: true });
-  assertProgramKeypairs();
 
   const payer = deterministicPayer();
   await writeFile(PAYER_PATH, JSON.stringify(Array.from(payer.secretKey)));
@@ -58,6 +57,7 @@ async function main(): Promise<void> {
 
   const patchedAccounts = await writePatchedDovesAccounts(mainnetConnection);
   await spawnChecked("anchor", ["build", "--no-idl"]);
+  assertProgramArtifacts();
 
   const validatorArgs = [
     "--reset",
@@ -80,6 +80,11 @@ async function main(): Promise<void> {
       "--account",
       pubkey.toBase58(),
       path,
+    ]),
+    ...LOCAL_PROGRAMS.flatMap((program) => [
+      "--bpf-program",
+      EXPECTED_PROGRAM_IDS[program].toBase58(),
+      `target/deploy/${program}.so`,
     ]),
   ];
 
@@ -111,20 +116,6 @@ async function main(): Promise<void> {
     "--url",
     LOCAL_URL,
   ]);
-
-  for (const program of LOCAL_PROGRAMS) {
-    await spawnChecked("solana", [
-      "program",
-      "deploy",
-      "--url",
-      LOCAL_URL,
-      "--keypair",
-      PAYER_PATH,
-      "--program-id",
-      `target/deploy/${program}-keypair.json`,
-      `target/deploy/${program}.so`,
-    ]);
-  }
 
   await spawnChecked(
     "node",
@@ -168,20 +159,12 @@ const EXPECTED_PROGRAM_IDS: Record<(typeof LOCAL_PROGRAMS)[number], PublicKey> =
     drift_if_adapter: DRIFT_IF_ADAPTER_PROGRAM_ID,
   };
 
-function assertProgramKeypairs(): void {
+function assertProgramArtifacts(): void {
   for (const program of LOCAL_PROGRAMS) {
-    const path = `target/deploy/${program}-keypair.json`;
+    const path = `target/deploy/${program}.so`;
     if (!existsSync(path)) {
       throw new Error(
-        `${path} is missing. Create or restore program keypairs that match Anchor.toml, declare_id!, and sdk/src/index.ts before running strict fork tests.`,
-      );
-    }
-    const secret = JSON.parse(readFileSync(path, "utf8")) as number[];
-    const actual = Keypair.fromSecretKey(Uint8Array.from(secret)).publicKey;
-    const expected = EXPECTED_PROGRAM_IDS[program];
-    if (!actual.equals(expected)) {
-      throw new Error(
-        `${path} public key is ${actual.toBase58()}, expected ${expected.toBase58()}. Run anchor keys sync only if you also update docs, SDK, and tests.`,
+        `${path} is missing. Run anchor build before running strict fork tests.`,
       );
     }
   }

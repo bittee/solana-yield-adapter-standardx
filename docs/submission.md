@@ -17,10 +17,26 @@ the devnet registry address, and the full successful output from the final gate.
 ## One-Time Devnet Registry Deployment
 
 The bounty requires the registry contract to be deployed to devnet.
-Before deploying, ensure `target/deploy/registry-keypair.json` exists and its
+Before deploying, ensure the registry program keypair exists locally and its
 public key equals the registry id in `programs/registry/src/lib.rs`,
-`Anchor.toml`, and `sdk/src/index.ts`. If you generate a new program keypair,
-update all three places together before building and submitting.
+`Anchor.toml`, and `sdk/src/index.ts`.
+
+If you do not already have the registry program keypair, generate a new local
+set and synchronize all checked-in public ids:
+
+```bash
+npm run keys:sync
+```
+
+If you already have `program-keypairs/registry-keypair.json`, restore it into
+Anchor's deploy directory:
+
+```bash
+npm run keys:restore:registry
+npm run keys:verify:registry
+```
+
+Do not commit `program-keypairs/` or `target/deploy/*-keypair.json`.
 
 ```bash
 npm run deploy:registry:devnet
@@ -40,13 +56,14 @@ Run the full gate from a clean checkout:
 
 ```bash
 npm install
+npm run keys:ids:check
 MAINNET_RPC_URL=<mainnet-rpc> npm run bounty:check
 ```
 
 This gate is intentionally strict. It fails if the local machine lacks the
-required CLI tools, if deployment keypairs do not match the checked-in program
-ids, if the devnet registry is not deployed and initialized, or if the
-mainnet-fork round trips do not execute.
+required CLI tools, if checked-in program ids are not synchronized across
+Anchor/Rust/SDK, if the devnet registry is not deployed and initialized, or if
+the mainnet-fork round trips do not execute.
 
 On success, include:
 

@@ -1,6 +1,7 @@
 target/
 .anchor/
 node_modules/
+program-keypairs/
 dist/
 .env
 *.log

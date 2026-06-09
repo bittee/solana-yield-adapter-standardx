@@ -56,7 +56,7 @@ async function main(): Promise<void> {
 function assertProgramKeypair(): void {
   if (!existsSync(REGISTRY_KEYPAIR_PATH)) {
     throw new Error(
-      `${REGISTRY_KEYPAIR_PATH} is missing. Create or restore the registry program keypair whose public key is ${REGISTRY_PROGRAM_ID.toBase58()} before deploying to devnet.`,
+      `${REGISTRY_KEYPAIR_PATH} is missing. Restore the registry program keypair whose public key is ${REGISTRY_PROGRAM_ID.toBase58()} with npm run keys:restore:registry, or run npm run keys:sync to generate a new local program id set and commit the synchronized public id changes before deploying.`,
     );
   }
 

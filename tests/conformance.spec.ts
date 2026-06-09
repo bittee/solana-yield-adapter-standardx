@@ -132,7 +132,16 @@ describe("SYAS bounty conformance preflight", () => {
     if (!pkg.scripts?.["bounty:check"]) {
       throw new Error("package.json must define npm run bounty:check");
     }
-    for (const script of ["deploy:registry:devnet", "verify:registry:devnet"]) {
+    for (const script of [
+      "keys:ids:check",
+      "keys:sync",
+      "keys:restore",
+      "keys:restore:registry",
+      "keys:verify",
+      "keys:verify:registry",
+      "deploy:registry:devnet",
+      "verify:registry:devnet",
+    ]) {
       if (!pkg.scripts?.[script]) {
         throw new Error(`package.json must define npm run ${script}`);
       }
@@ -145,6 +154,7 @@ describe("SYAS bounty conformance preflight", () => {
       "verify:registry:devnet",
       "MAINNET_RPC_URL",
       "RUN_MAINNET_FORK_TESTS",
+      "keys:ids:check",
       "anchor --version",
       "solana --version",
       "npm run test:fork",
@@ -152,6 +162,18 @@ describe("SYAS bounty conformance preflight", () => {
       if (!gate.includes(required)) {
         throw new Error(`bounty gate is missing ${required}`);
       }
+    }
+  });
+
+  it("does not require deploy keypair files for strict local fork loading", () => {
+    const runner = read("scripts/mainnet-fork/run.ts");
+    if (!runner.includes("--bpf-program")) {
+      throw new Error("strict fork runner must load local programs by id");
+    }
+    if (runner.includes("program-id")) {
+      throw new Error(
+        "strict fork runner must not require deploy keypair files",
+      );
     }
   });
 });

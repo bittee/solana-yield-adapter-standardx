@@ -118,9 +118,10 @@ The strict runner:
 - builds SBF artifacts with `anchor build --no-idl`;
 - starts `solana-test-validator` against `MAINNET_RPC_URL`;
 - clones external protocol programs and protocol accounts;
+- loads registry, dispatcher, and all five local adapters with
+  `--bpf-program` using the checked-in program ids;
 - injects a deterministic funded USDC token account for the test wallet;
 - patches Doves oracle timestamps before validator startup;
-- deploys registry, dispatcher, and all five adapters;
 - runs `tests/mainnet-fork/roundtrip.spec.ts` with
   `RUN_MAINNET_FORK_TESTS=1`.
 
