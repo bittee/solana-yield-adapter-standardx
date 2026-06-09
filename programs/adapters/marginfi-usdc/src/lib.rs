@@ -31,7 +31,7 @@ const BALANCE_SIZE: usize = 104;
 const BALANCE_BANK_OFFSET: usize = 1;
 const BALANCE_ASSET_SHARES_OFFSET: usize = 40;
 const MAX_BALANCES: usize = 16;
-const I80F48_PRODUCT_SCALE: u128 = 1u128 << 96;
+const I80F48_SCALE: u128 = 1u128 << 48;
 
 #[program]
 pub mod marginfi_usdc_adapter {
@@ -283,7 +283,7 @@ fn initialize_marginfi_account_if_needed(ctx: &Context<StandardOp>) -> Result<()
     )
     .arg(&0u16)?
     .arg(&None::<u16>)?
-    .account(ctx.accounts.marginfi_group.to_account_info(), false, false)
+    .account(ctx.accounts.marginfi_group.to_account_info(), true, false)
     .account(ctx.accounts.marginfi_account.to_account_info(), true, false)
     .account(
         ctx.accounts.position_authority.to_account_info(),
@@ -315,7 +315,7 @@ fn invoke_lending_deposit(ctx: &Context<StandardOp>, amount: u64) -> Result<()> 
     )
     .arg(&amount)?
     .arg(&None::<bool>)?
-    .account(ctx.accounts.marginfi_group.to_account_info(), false, false)
+    .account(ctx.accounts.marginfi_group.to_account_info(), true, false)
     .account(ctx.accounts.marginfi_account.to_account_info(), true, false)
     .account(
         ctx.accounts.position_authority.to_account_info(),
@@ -444,7 +444,7 @@ fn shares_to_tokens(asset_shares_bits: u128, asset_share_value_bits: u128) -> Re
     u128_to_u64(mul_div_floor_u128(
         asset_shares_bits,
         asset_share_value_bits,
-        I80F48_PRODUCT_SCALE,
+        I80F48_SCALE,
     )?)
 }
 

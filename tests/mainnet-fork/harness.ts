@@ -264,7 +264,7 @@ export const ADAPTER_SPECS: ForkAdapterSpec[] = [
     amountIn: 1_000_000n,
     tail: (ctx) => [
       writable(true, marginfiAccount(ctx.positionAuthority)),
-      writable(false, MARGINFI.group),
+      writable(true, MARGINFI.group),
       writable(true, MARGINFI.usdcBank),
       writable(false, MARGINFI.liquidityVaultAuthority),
       writable(true, MARGINFI.liquidityVault),
