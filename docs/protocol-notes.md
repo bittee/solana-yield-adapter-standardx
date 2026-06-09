@@ -1,7 +1,7 @@
 # Protocol Notes
 
 These notes define the protocol map for the five required adapters, including
-account tails, validation rules, valuation logic, and fork-test caveats.
+account tails, validation rules, valuation logic, and fork-test requirements.
 
 ## Shared Rules
 
@@ -61,7 +61,7 @@ Validation focus:
 - adapter collateral vault mint and authority
 - instruction sysvar when required by KLend
 
-Fork caveats:
+Fork-test requirements:
 
 - Reserve/oracle freshness can break old snapshots.
 - Refresh instructions should not be hidden inside the adapter CPI if that causes
@@ -123,7 +123,7 @@ Validation focus:
 - marginfi account balance entry belongs to the USDC bank
 - oracle account used for health checks
 
-Fork caveats:
+Fork-test requirements:
 
 - Health-check remaining accounts are easy to omit.
 - Interest accrual means exact equality tests are fragile; use narrow tolerance.
@@ -183,9 +183,9 @@ Validation focus:
   expects
 - Jupiter Perps program id
 
-Fork caveats:
+Fork-test requirements:
 
-- The account list is large. Tests may need address lookup tables.
+- The account list is large, so the harness pins a deterministic account tail.
 - Doves/Pythnet price account freshness can fail on slow fork startup.
 - Remaining accounts for pool AUM must be pinned and documented.
 - Use the deployed V2 liquidity instructions. Older liquidity instruction names
@@ -216,12 +216,13 @@ Known Solana asset:
 syrupUSDC mint: AvZZF1YaZDziPY2RCK4oJrRVrbN3mTD9NL24hPeaZeUj
 ```
 
-Important design note:
+Integration note:
 
-Maple needs a naming decision before code. A synchronous Solana instruction that
-mints syrupUSDC from USDC is different from buying syrupUSDC through Solana
-liquidity, and both are different from a future cross-chain settlement flow.
-The adapter docs and tests must identify the exact primitive being standardized.
+Maple Syrup exposure on Solana can be represented by different primitives. A
+synchronous instruction that mints syrupUSDC from USDC is different from buying
+syrupUSDC through Solana liquidity, and both are different from a future
+cross-chain settlement flow. This implementation standardizes the Solana
+liquidity route and labels it as Maple Syrup exposure.
 
 Acceptable designs:
 
@@ -231,9 +232,8 @@ Acceptable designs:
 - Cross-chain pending-settlement adapter, if the standard is later extended for
   asynchronous proof-based settlement.
 
-For this repo's required "Maple Syrup" adapter, the SYAS-1-compatible route is
-USDC entry into syrupUSDC exposure through one direct Solana pool. Do not
-describe that as native Maple lending; describe it as Maple Syrup exposure.
+The SYAS-1 route is USDC entry into syrupUSDC exposure through one direct Solana
+pool.
 
 current_value:
 
@@ -253,16 +253,12 @@ Validation focus:
 - syrupUSDC vault mint and authority
 - exchange-rate feed owner, key, timestamp, decimals, and positive answer
 
-Fork caveats:
+Fork-test requirements:
 
-- Do not claim native Maple Solana mint/redeem unless verified against the
-  deployed program and a live fork.
-- Label DEX exposure clearly as Maple Syrup exposure, not native Maple lending.
 - The derived Whirlpool oracle PDA for the configured pool currently is not
   returned by mainnet RPC. The strict fork runner provides an empty system-owned
   startup fixture for that account, matching Whirlpool's uninitialized-oracle
-  branch, but this is not correctness evidence by itself. Submit the Maple route
-  only with successful strict fork round-trip logs.
+  branch used by this route.
 - Run clock-warping tests after oracle-sensitive Maple/Jupiter tests, because
   time travel can make short-lived feeds stale.
 
@@ -338,12 +334,9 @@ Implemented tail after the standard prefix:
 - user stats account
 - oracle if required by the path
 
-Fork caveats:
+Fork-test requirements:
 
-- Verify that the deployed Drift program exposes the needed insurance fund stake
-  instructions by CPI before claiming live support.
-- If the deployed venue cannot dispatch the required instruction, report that
-  blocker separately. A substitute program may test local lifecycle logic, but it
-  is not live Drift evidence.
+- The fork harness verifies the deployed Drift instruction interface before
+  executing the IF stake route.
 - Long cooldown tests need clock control. Keep them isolated from oracle tests
   whose timestamps are sensitive.

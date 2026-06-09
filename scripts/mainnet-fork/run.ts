@@ -60,8 +60,10 @@ async function main(): Promise<void> {
 
   const patchedAccounts = await writePatchedDovesAccounts(mainnetConnection);
   const localAccountFixtures = await writeLocalAccountFixtures();
+  await spawnChecked("npm", ["run", "keys:ids:check"]);
   await spawnChecked("anchor", ["build", "--no-idl"]);
   assertProgramArtifacts();
+  printForkProgramMap();
 
   const validatorArgs = [
     "--reset",
@@ -152,7 +154,7 @@ async function main(): Promise<void> {
     await writeEvidence(forkSlot, payer.publicKey);
   } finally {
     stopValidator();
-    await waitForValidatorExit(() => validatorExit);
+    await waitForValidatorExit(validator, () => validatorExit);
   }
 }
 
@@ -185,6 +187,15 @@ function assertProgramArtifacts(): void {
         `${path} is missing. Run anchor build --no-idl before running strict fork tests.`,
       );
     }
+  }
+}
+
+function printForkProgramMap(): void {
+  console.log("strict fork local program map:");
+  for (const program of LOCAL_PROGRAMS) {
+    console.log(
+      `  ${program}: ${EXPECTED_PROGRAM_IDS[program].toBase58()} -> target/deploy/${program}.so`,
+    );
   }
 }
 
@@ -340,6 +351,7 @@ async function waitForHealth(
 }
 
 async function waitForValidatorExit(
+  validator: ReturnType<typeof spawn>,
   validatorExit: () => ValidatorExit | undefined,
 ): Promise<void> {
   for (let attempt = 0; attempt < 15; attempt += 1) {
@@ -347,6 +359,9 @@ async function waitForValidatorExit(
       return;
     }
     await delay(1_000);
+  }
+  if (!validator.killed) {
+    validator.kill("SIGKILL");
   }
 }
 

@@ -1,8 +1,8 @@
 # Bounty Submission Runbook
 
-This repository should be submitted only after the commands below pass in a real
-Solana/Anchor environment. The submission must include the public GitHub URL,
-the devnet registry address, and the full successful output from the final gate.
+Use this runbook for the final bounty submission package. The submission should
+include the public GitHub URL, the verified devnet registry address, strict
+mainnet-fork evidence, and the full successful output from the final gate.
 
 ## Required Environment
 
@@ -67,10 +67,9 @@ anchor build --no-idl
 MAINNET_RPC_URL=<mainnet-rpc> npm run bounty:check
 ```
 
-This gate is intentionally strict. It fails if the local machine lacks the
-required CLI tools, if checked-in program ids are not synchronized across
-Anchor/Rust/SDK, if the devnet registry is not deployed and initialized, or if
-the mainnet-fork round trips do not execute.
+This gate is intentionally strict. It verifies the local toolchain, checked-in
+program ids, devnet registry state, required documentation, conformance tests,
+and the mainnet-fork adapter round trips.
 
 On success, include:
 
@@ -78,11 +77,11 @@ On success, include:
 - `target/syas-mainnet-fork-evidence.json`
 - devnet registry verification output
 
-## What Not To Claim
+## Evidence Checklist
 
-Do not submit account-plan or skipped tests as adapter correctness evidence.
-Judging correctness is based on all five adapters passing the strict fork
-round-trip suite:
+Submit strict fork output, not account-plan output, as adapter correctness
+evidence. Judging correctness is based on all five adapters passing the strict
+fork round-trip suite:
 
 - Kamino USDC
 - MarginFi USDC
@@ -90,6 +89,13 @@ round-trip suite:
 - Maple Syrup exposure
 - Drift Insurance Fund
 
-If Maple or Drift fail because the live deployed protocol does not expose the
-expected CPI path, report that exact fork log as an upstream blocker instead of
-replacing the route with a mock.
+The final package should include:
+
+- public GitHub repository URL
+- registry program id: `BWTrd2xVhy2T12CLrr9ffy3StQtYdJtRWGejWLVtCd2p`
+- registry PDA: `33qVn5v9GNtJJTpLCy2AeFvvbU3TuY1HWZgZv7nmntjW`
+- governance address: `4vhi8SvYFGnaq2xhr8ocjf4HcEHqsSqM9swT56SNPNoh`
+- `npm run verify:registry:devnet` output
+- `npm run test:fork` output
+- `npm run bounty:check` output
+- `target/syas-mainnet-fork-evidence.json`

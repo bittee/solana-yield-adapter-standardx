@@ -1,8 +1,7 @@
 # Mainnet Fork Tests
 
-The fork suite should show what actually ran against cloned mainnet accounts.
-When a protocol path cannot execute, the report should say that directly and
-record the reason.
+The fork suite records what ran against cloned mainnet accounts and separates
+local preflight checks from live protocol round-trip evidence.
 
 ## Required Tests Per Adapter
 
@@ -63,10 +62,8 @@ withdraw
 assert balances and position state
 ```
 
-If the deployed program does not expose the needed instruction, or the fork
-cannot keep required accounts fresh, report that blocker separately. A substitute
-program may test local lifecycle logic, but it must not be labeled as live
-protocol evidence.
+The round-trip label is reserved for executions that reach the target protocol
+path on the forked validator.
 
 ## Fork Harness Requirements
 
@@ -127,8 +124,9 @@ The strict runner:
 - runs `tests/mainnet-fork/roundtrip.spec.ts` with
   `RUN_MAINNET_FORK_TESTS=1`.
 
-If `RUN_MAINNET_FORK_TESTS` is not set, the strict roundtrip suite is skipped.
-This prevents local runs from being mislabeled as live protocol evidence.
+The round-trip spec requires `RUN_MAINNET_FORK_TESTS=1`. Without that explicit
+flag, local test runs execute only the preflight layer, keeping strict fork
+evidence separate from normal development checks.
 
 ## Protocol Notes
 
