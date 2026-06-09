@@ -77,9 +77,9 @@ describeFork("mainnet-fork adapter roundtrips", () => {
 });
 
 describe("mainnet-fork adapter roundtrips guard", () => {
-  it("is explicit when strict fork tests are not enabled", function () {
+  it("keeps strict fork execution explicit", () => {
     if (forkTestsEnabled()) {
-      this.skip();
+      return;
     }
     if (process.env.MAINNET_RPC_URL) {
       throw new Error(

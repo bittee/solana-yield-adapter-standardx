@@ -29,6 +29,10 @@ const LEDGER_DIR = join(WORK_DIR, "ledger");
 const PAYER_PATH = join(WORK_DIR, "payer.json");
 const EVIDENCE_PATH = resolve("target/syas-mainnet-fork-evidence.json");
 const OWNER_USDC_AMOUNT = 1_000_000_000_000n;
+const DOVES_TIMESTAMP_OFFSET = 177;
+const DOVES_MAX_AG_PRICE_AGE_OFFSET = 185;
+const DOVES_MAX_PRICE_FEED_AGE_OFFSET = 189;
+const DOVES_FORK_MAX_AGE_SECONDS = 86_400;
 
 type ValidatorExit = { code: number | null; signal: NodeJS.Signals | null };
 
@@ -62,11 +66,7 @@ async function main(): Promise<void> {
   assertProgramArtifacts();
   printForkProgramMap();
   const forkSlot = await mainnetConnection.getSlot("confirmed");
-  const forkBlockTime = await mainnetConnection.getBlockTime(forkSlot);
-  const patchedAccounts = await writePatchedDovesAccounts(
-    mainnetConnection,
-    forkBlockTime ?? Math.floor(Date.now() / 1000),
-  );
+  const patchedAccounts = await writePatchedDovesAccounts(mainnetConnection);
   const localAccountFixtures = await writeLocalAccountFixtures();
 
   const validatorArgs = [
@@ -230,9 +230,8 @@ function tokenAccountFixture(owner: PublicKey): unknown {
 
 async function writePatchedDovesAccounts(
   connection: Connection,
-  publishTime: number,
 ): Promise<Array<{ pubkey: PublicKey; path: string }>> {
-  const now = BigInt(publishTime);
+  const publishTime = BigInt(Math.floor(Date.now() / 1000));
   const out: Array<{ pubkey: PublicKey; path: string }> = [];
 
   for (const pubkey of PATCHED_DOVES_ACCOUNTS) {
@@ -241,8 +240,16 @@ async function writePatchedDovesAccounts(
       throw new Error(`missing mainnet account ${pubkey.toBase58()}`);
     }
     const data = Buffer.from(info.data);
-    if (data.length > 185) {
-      data.writeBigInt64LE(now, 177);
+    if (data.length > DOVES_MAX_PRICE_FEED_AGE_OFFSET + 4) {
+      data.writeBigInt64LE(publishTime, DOVES_TIMESTAMP_OFFSET);
+      data.writeUInt32LE(
+        DOVES_FORK_MAX_AGE_SECONDS,
+        DOVES_MAX_AG_PRICE_AGE_OFFSET,
+      );
+      data.writeUInt32LE(
+        DOVES_FORK_MAX_AGE_SECONDS,
+        DOVES_MAX_PRICE_FEED_AGE_OFFSET,
+      );
     }
     const path = join(WORK_DIR, `${pubkey.toBase58()}.json`);
     await writeFile(

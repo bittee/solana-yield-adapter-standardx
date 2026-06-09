@@ -17,6 +17,11 @@ const SPOT_MARKET_IF_TOTAL_SHARES: usize = 336;
 const SPOT_MARKET_UNSTAKING_PERIOD: usize = 384;
 const IF_STAKE_AUTHORITY: usize = 8;
 const IF_STAKE_IF_SHARES: usize = 40;
+const INITIALIZE_USER_STATS: [u8; 8] = [254, 243, 72, 98, 251, 130, 168, 213];
+const INITIALIZE_INSURANCE_FUND_STAKE: [u8; 8] = [187, 179, 243, 70, 248, 90, 92, 147];
+const ADD_INSURANCE_FUND_STAKE: [u8; 8] = [251, 144, 115, 11, 222, 47, 62, 236];
+const REQUEST_REMOVE_INSURANCE_FUND_STAKE: [u8; 8] = [142, 70, 204, 92, 73, 106, 180, 52];
+const REMOVE_INSURANCE_FUND_STAKE: [u8; 8] = [128, 166, 142, 9, 254, 187, 143, 174];
 
 #[program]
 pub mod drift_if_adapter {
@@ -277,9 +282,9 @@ fn initialize_drift_accounts_if_needed(ctx: &Context<StandardOp>) -> Result<()> 
     ]];
 
     if ctx.accounts.user_stats.to_account_info().data_is_empty() {
-        CpiBuilder::new(
+        CpiBuilder::with_discriminator(
             ctx.accounts.drift_program.to_account_info(),
-            "initializeUserStats",
+            INITIALIZE_USER_STATS,
         )
         .account(ctx.accounts.user_stats.to_account_info(), true, false)
         .account(ctx.accounts.drift_state.to_account_info(), true, false)
@@ -300,9 +305,9 @@ fn initialize_drift_accounts_if_needed(ctx: &Context<StandardOp>) -> Result<()> 
         .to_account_info()
         .data_is_empty()
     {
-        CpiBuilder::new(
+        CpiBuilder::with_discriminator(
             ctx.accounts.drift_program.to_account_info(),
-            "initializeInsuranceFundStake",
+            INITIALIZE_INSURANCE_FUND_STAKE,
         )
         .arg(&MARKET_INDEX)?
         .account(ctx.accounts.spot_market.to_account_info(), false, false)
@@ -334,9 +339,9 @@ fn invoke_add_stake(ctx: &Context<StandardOp>, amount: u64) -> Result<()> {
         position_key.as_ref(),
         bump.as_ref(),
     ]];
-    CpiBuilder::new(
+    CpiBuilder::with_discriminator(
         ctx.accounts.drift_program.to_account_info(),
-        "addInsuranceFundStake",
+        ADD_INSURANCE_FUND_STAKE,
     )
     .arg(&MARKET_INDEX)?
     .arg(&amount)?
@@ -377,9 +382,9 @@ fn invoke_request_remove(ctx: &Context<StandardOp>, shares: u64) -> Result<()> {
         position_key.as_ref(),
         bump.as_ref(),
     ]];
-    CpiBuilder::new(
+    CpiBuilder::with_discriminator(
         ctx.accounts.drift_program.to_account_info(),
-        "requestRemoveInsuranceFundStake",
+        REQUEST_REMOVE_INSURANCE_FUND_STAKE,
     )
     .arg(&MARKET_INDEX)?
     .arg(&shares)?
@@ -411,9 +416,9 @@ fn invoke_remove_stake(ctx: &Context<StandardOp>) -> Result<()> {
         position_key.as_ref(),
         bump.as_ref(),
     ]];
-    CpiBuilder::new(
+    CpiBuilder::with_discriminator(
         ctx.accounts.drift_program.to_account_info(),
-        "removeInsuranceFundStake",
+        REMOVE_INSURANCE_FUND_STAKE,
     )
     .arg(&MARKET_INDEX)?
     .account(ctx.accounts.drift_state.to_account_info(), false, false)
