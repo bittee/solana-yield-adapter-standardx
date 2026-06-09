@@ -8,6 +8,8 @@
     "test": "node --import tsx ./node_modules/mocha/bin/mocha.js --timeout 1000000 \"tests/**/*.ts\"",
     "test:fork": "node --import tsx scripts/mainnet-fork/run.ts",
     "test:anchor": "anchor test",
+    "deploy:registry:devnet": "node --import tsx scripts/devnet/deploy-registry.ts",
+    "verify:registry:devnet": "node --import tsx scripts/devnet/verify-registry.ts",
     "fmt": "cargo fmt --all && prettier --write \"{tests,sdk,scripts}/**/*.{ts,js,json}\" \"*.json\"",
     "typecheck": "tsc --noEmit",
     "bounty:check": "node --import tsx scripts/bounty/check.ts"

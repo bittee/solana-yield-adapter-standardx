@@ -1,8 +1,9 @@
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { spawn } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import {
   MAINNET_CLONES,
@@ -10,12 +11,22 @@ import {
   PATCHED_DOVES_ACCOUNTS,
   TOKEN_PROGRAM_ID,
 } from "./accounts.js";
-import { USDC_MINT } from "../../sdk/src/index.js";
+import {
+  DISPATCHER_PROGRAM_ID,
+  DRIFT_IF_ADAPTER_PROGRAM_ID,
+  JUPITER_JLP_ADAPTER_PROGRAM_ID,
+  KAMINO_USDC_ADAPTER_PROGRAM_ID,
+  MAPLE_SYRUP_ADAPTER_PROGRAM_ID,
+  MARGINFI_USDC_ADAPTER_PROGRAM_ID,
+  REGISTRY_PROGRAM_ID,
+  USDC_MINT,
+} from "../../sdk/src/index.js";
 
 const LOCAL_URL = "http://127.0.0.1:8899";
 const WORK_DIR = "/tmp/syas-mainnet-fork";
 const LEDGER_DIR = join(WORK_DIR, "ledger");
 const PAYER_PATH = join(WORK_DIR, "payer.json");
+const EVIDENCE_PATH = resolve("target/syas-mainnet-fork-evidence.json");
 const OWNER_USDC_AMOUNT = 1_000_000_000_000n;
 
 async function main(): Promise<void> {
@@ -28,6 +39,7 @@ async function main(): Promise<void> {
 
   await rm(WORK_DIR, { recursive: true, force: true });
   await mkdir(WORK_DIR, { recursive: true });
+  assertProgramKeypairs();
 
   const payer = deterministicPayer();
   await writeFile(PAYER_PATH, JSON.stringify(Array.from(payer.secretKey)));
@@ -36,13 +48,15 @@ async function main(): Promise<void> {
     payer.publicKey,
     false,
   );
+  const mainnetConnection = new Connection(mainnetRpc, "confirmed");
+  const forkSlot = await mainnetConnection.getSlot("confirmed");
   const ownerTokenPath = join(WORK_DIR, "owner-usdc.json");
   await writeFile(
     ownerTokenPath,
     JSON.stringify(tokenAccountFixture(payer.publicKey), null, 2),
   );
 
-  const patchedAccounts = await writePatchedDovesAccounts(mainnetRpc);
+  const patchedAccounts = await writePatchedDovesAccounts(mainnetConnection);
   await spawnChecked("anchor", ["build", "--no-idl"]);
 
   const validatorArgs = [
@@ -129,6 +143,8 @@ async function main(): Promise<void> {
       MAINNET_RPC_URL: mainnetRpc,
     },
   );
+
+  await writeEvidence(forkSlot, payer.publicKey);
 }
 
 const LOCAL_PROGRAMS = [
@@ -140,6 +156,36 @@ const LOCAL_PROGRAMS = [
   "maple_syrup_adapter",
   "drift_if_adapter",
 ] as const;
+
+const EXPECTED_PROGRAM_IDS: Record<(typeof LOCAL_PROGRAMS)[number], PublicKey> =
+  {
+    registry: REGISTRY_PROGRAM_ID,
+    dispatcher: DISPATCHER_PROGRAM_ID,
+    kamino_usdc_adapter: KAMINO_USDC_ADAPTER_PROGRAM_ID,
+    marginfi_usdc_adapter: MARGINFI_USDC_ADAPTER_PROGRAM_ID,
+    jupiter_jlp_adapter: JUPITER_JLP_ADAPTER_PROGRAM_ID,
+    maple_syrup_adapter: MAPLE_SYRUP_ADAPTER_PROGRAM_ID,
+    drift_if_adapter: DRIFT_IF_ADAPTER_PROGRAM_ID,
+  };
+
+function assertProgramKeypairs(): void {
+  for (const program of LOCAL_PROGRAMS) {
+    const path = `target/deploy/${program}-keypair.json`;
+    if (!existsSync(path)) {
+      throw new Error(
+        `${path} is missing. Create or restore program keypairs that match Anchor.toml, declare_id!, and sdk/src/index.ts before running strict fork tests.`,
+      );
+    }
+    const secret = JSON.parse(readFileSync(path, "utf8")) as number[];
+    const actual = Keypair.fromSecretKey(Uint8Array.from(secret)).publicKey;
+    const expected = EXPECTED_PROGRAM_IDS[program];
+    if (!actual.equals(expected)) {
+      throw new Error(
+        `${path} public key is ${actual.toBase58()}, expected ${expected.toBase58()}. Run anchor keys sync only if you also update docs, SDK, and tests.`,
+      );
+    }
+  }
+}
 
 function deterministicPayer(): Keypair {
   return Keypair.fromSeed(Uint8Array.from(new Array(32).fill(7)));
@@ -165,9 +211,8 @@ function tokenAccountFixture(owner: PublicKey): unknown {
 }
 
 async function writePatchedDovesAccounts(
-  mainnetRpc: string,
+  connection: Connection,
 ): Promise<Array<{ pubkey: PublicKey; path: string }>> {
-  const connection = new Connection(mainnetRpc, "confirmed");
   const now = BigInt(Math.floor(Date.now() / 1000));
   const out: Array<{ pubkey: PublicKey; path: string }> = [];
 
@@ -201,6 +246,29 @@ async function writePatchedDovesAccounts(
   }
 
   return out;
+}
+
+async function writeEvidence(
+  forkSlot: number,
+  payer: PublicKey,
+): Promise<void> {
+  const evidence = {
+    generatedAt: new Date().toISOString(),
+    forkSlot,
+    localValidator: LOCAL_URL,
+    payer: payer.toBase58(),
+    programs: {
+      registry: REGISTRY_PROGRAM_ID.toBase58(),
+      dispatcher: DISPATCHER_PROGRAM_ID.toBase58(),
+      kaminoUsdcAdapter: KAMINO_USDC_ADAPTER_PROGRAM_ID.toBase58(),
+      marginfiUsdcAdapter: MARGINFI_USDC_ADAPTER_PROGRAM_ID.toBase58(),
+      jupiterJlpAdapter: JUPITER_JLP_ADAPTER_PROGRAM_ID.toBase58(),
+      mapleSyrupAdapter: MAPLE_SYRUP_ADAPTER_PROGRAM_ID.toBase58(),
+      driftIfAdapter: DRIFT_IF_ADAPTER_PROGRAM_ID.toBase58(),
+    },
+  };
+  await writeFile(EVIDENCE_PATH, JSON.stringify(evidence, null, 2));
+  console.log(`mainnet fork evidence: ${EVIDENCE_PATH}`);
 }
 
 async function waitForHealth(): Promise<void> {
@@ -247,5 +315,5 @@ async function spawnChecked(
 
 main().catch((error: unknown) => {
   console.error(error);
-  process.exit(1);
+  process.exitCode = 1;
 });

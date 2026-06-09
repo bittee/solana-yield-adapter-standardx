@@ -21,6 +21,7 @@ describe("SYAS bounty conformance preflight", () => {
       "docs/build-your-own-adapter.md",
       "docs/mainnet-fork-tests.md",
       "docs/protocol-notes.md",
+      "docs/submission.md",
     ]) {
       if (!existsSync(path)) {
         throw new Error(`missing required documentation file: ${path}`);
@@ -46,6 +47,26 @@ describe("SYAS bounty conformance preflight", () => {
         if (other !== adapter && cargo.includes(other)) {
           throw new Error(`${adapter} depends on adapter crate ${other}`);
         }
+      }
+    }
+  });
+
+  it("keeps Anchor devnet program ids available for deployment", () => {
+    const anchorToml = read("Anchor.toml");
+    if (!anchorToml.includes("[programs.devnet]")) {
+      throw new Error("Anchor.toml must define [programs.devnet]");
+    }
+    for (const program of [
+      "dispatcher",
+      "registry",
+      "kamino_usdc_adapter",
+      "marginfi_usdc_adapter",
+      "jupiter_jlp_adapter",
+      "maple_syrup_adapter",
+      "drift_if_adapter",
+    ]) {
+      if (!anchorToml.includes(`${program} = `)) {
+        throw new Error(`Anchor.toml is missing ${program}`);
       }
     }
   });
@@ -110,6 +131,27 @@ describe("SYAS bounty conformance preflight", () => {
     };
     if (!pkg.scripts?.["bounty:check"]) {
       throw new Error("package.json must define npm run bounty:check");
+    }
+    for (const script of ["deploy:registry:devnet", "verify:registry:devnet"]) {
+      if (!pkg.scripts?.[script]) {
+        throw new Error(`package.json must define npm run ${script}`);
+      }
+    }
+  });
+
+  it("keeps the bounty gate strict about devnet and fork evidence", () => {
+    const gate = read("scripts/bounty/check.ts");
+    for (const required of [
+      "verify:registry:devnet",
+      "MAINNET_RPC_URL",
+      "RUN_MAINNET_FORK_TESTS",
+      "anchor --version",
+      "solana --version",
+      "npm run test:fork",
+    ]) {
+      if (!gate.includes(required)) {
+        throw new Error(`bounty gate is missing ${required}`);
+      }
     }
   });
 });
