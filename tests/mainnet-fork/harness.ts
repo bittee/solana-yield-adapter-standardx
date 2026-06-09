@@ -326,7 +326,7 @@ export const ADAPTER_SPECS: ForkAdapterSpec[] = [
     name: "Drift Insurance Fund",
     adapterProgram: DRIFT.adapter,
     protocolVariant: DRIFT.protocolVariant,
-    amountIn: 1_000_000n,
+    amountIn: 1_000n,
     delayedWithdraw: true,
     tail: (ctx) => [
       writable(true, driftUserStats(ctx.positionAuthority)),
