@@ -279,7 +279,7 @@ fn initialize_drift_accounts_if_needed(ctx: &Context<StandardOp>) -> Result<()> 
     if ctx.accounts.user_stats.to_account_info().data_is_empty() {
         CpiBuilder::new(
             ctx.accounts.drift_program.to_account_info(),
-            "initialize_user_stats",
+            "initializeUserStats",
         )
         .account(ctx.accounts.user_stats.to_account_info(), true, false)
         .account(ctx.accounts.drift_state.to_account_info(), true, false)
@@ -302,7 +302,7 @@ fn initialize_drift_accounts_if_needed(ctx: &Context<StandardOp>) -> Result<()> 
     {
         CpiBuilder::new(
             ctx.accounts.drift_program.to_account_info(),
-            "initialize_insurance_fund_stake",
+            "initializeInsuranceFundStake",
         )
         .arg(&MARKET_INDEX)?
         .account(ctx.accounts.spot_market.to_account_info(), false, false)
@@ -336,7 +336,7 @@ fn invoke_add_stake(ctx: &Context<StandardOp>, amount: u64) -> Result<()> {
     ]];
     CpiBuilder::new(
         ctx.accounts.drift_program.to_account_info(),
-        "add_insurance_fund_stake",
+        "addInsuranceFundStake",
     )
     .arg(&MARKET_INDEX)?
     .arg(&amount)?
@@ -379,7 +379,7 @@ fn invoke_request_remove(ctx: &Context<StandardOp>, shares: u64) -> Result<()> {
     ]];
     CpiBuilder::new(
         ctx.accounts.drift_program.to_account_info(),
-        "request_remove_insurance_fund_stake",
+        "requestRemoveInsuranceFundStake",
     )
     .arg(&MARKET_INDEX)?
     .arg(&shares)?
@@ -413,7 +413,7 @@ fn invoke_remove_stake(ctx: &Context<StandardOp>) -> Result<()> {
     ]];
     CpiBuilder::new(
         ctx.accounts.drift_program.to_account_info(),
-        "remove_insurance_fund_stake",
+        "removeInsuranceFundStake",
     )
     .arg(&MARKET_INDEX)?
     .account(ctx.accounts.drift_state.to_account_info(), false, false)

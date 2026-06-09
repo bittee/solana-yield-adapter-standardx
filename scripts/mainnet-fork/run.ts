@@ -51,19 +51,23 @@ async function main(): Promise<void> {
     false,
   );
   const mainnetConnection = new Connection(mainnetRpc, "confirmed");
-  const forkSlot = await mainnetConnection.getSlot("confirmed");
   const ownerTokenPath = join(WORK_DIR, "owner-usdc.json");
   await writeFile(
     ownerTokenPath,
     JSON.stringify(tokenAccountFixture(payer.publicKey), null, 2),
   );
 
-  const patchedAccounts = await writePatchedDovesAccounts(mainnetConnection);
-  const localAccountFixtures = await writeLocalAccountFixtures();
   await spawnChecked("npm", ["run", "keys:ids:check"]);
   await spawnChecked("anchor", ["build", "--no-idl"]);
   assertProgramArtifacts();
   printForkProgramMap();
+  const forkSlot = await mainnetConnection.getSlot("confirmed");
+  const forkBlockTime = await mainnetConnection.getBlockTime(forkSlot);
+  const patchedAccounts = await writePatchedDovesAccounts(
+    mainnetConnection,
+    forkBlockTime ?? Math.floor(Date.now() / 1000),
+  );
+  const localAccountFixtures = await writeLocalAccountFixtures();
 
   const validatorArgs = [
     "--reset",
@@ -71,7 +75,7 @@ async function main(): Promise<void> {
     "--ledger",
     LEDGER_DIR,
     "--warp-slot",
-    forkSlot.toString(),
+    (forkSlot + 1_000_000).toString(),
     "--url",
     mainnetRpc,
     ...EXTERNAL_PROGRAMS.flatMap((program) => [
@@ -226,8 +230,9 @@ function tokenAccountFixture(owner: PublicKey): unknown {
 
 async function writePatchedDovesAccounts(
   connection: Connection,
+  publishTime: number,
 ): Promise<Array<{ pubkey: PublicKey; path: string }>> {
-  const now = BigInt(Math.floor(Date.now() / 1000));
+  const now = BigInt(publishTime);
   const out: Array<{ pubkey: PublicKey; path: string }> = [];
 
   for (const pubkey of PATCHED_DOVES_ACCOUNTS) {
