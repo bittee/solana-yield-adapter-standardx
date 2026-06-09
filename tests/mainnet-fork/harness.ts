@@ -209,8 +209,10 @@ export async function simulateCurrentValue(
   const signed = await provider.wallet.signTransaction(tx);
   const simulation = await provider.connection.simulateTransaction(signed);
   if (simulation.value.err) {
+    const logs = simulation.value.logs?.map((line) => `    ${line}`).join("\n");
+    const suffix = logs ? `\n${logs}` : "";
     throw new Error(
-      `${spec.name} current_value failed: ${JSON.stringify(simulation.value.err)}`,
+      `${spec.name} current_value failed: ${JSON.stringify(simulation.value.err)}${suffix}`,
     );
   }
   const returned = simulation.value.returnData;
