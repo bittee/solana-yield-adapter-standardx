@@ -368,7 +368,23 @@ async function sendRoute(
     ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 }),
     routeInstruction(spec, name, args, routeContext(spec)),
   );
-  await provider.sendAndConfirm(tx, []);
+  try {
+    await provider.sendAndConfirm(tx, []);
+  } catch (error) {
+    throw enrichTransactionError(error, `${spec.name} ${name}`);
+  }
+}
+
+function enrichTransactionError(error: unknown, label: string): Error {
+  if (!(error instanceof Error)) {
+    return new Error(`${label} failed: ${String(error)}`);
+  }
+  const maybeLogs = error as Error & { logs?: string[] };
+  if (!maybeLogs.logs?.length) {
+    return error;
+  }
+  const details = maybeLogs.logs.map((line) => `    ${line}`).join("\n");
+  return new Error(`${label} failed:\n${details}`, { cause: error });
 }
 
 function routeInstruction(
