@@ -40,9 +40,9 @@ Non-responsibilities:
 - No hardcoded knowledge of Kamino, MarginFi, Jupiter, Maple, or Drift.
 - No mirrored share accounting that can diverge from adapter-owned state.
 
-The main risk in several reference repos is router expansion: once the dispatcher
+The main risk for this architecture is router expansion: once the dispatcher
 starts listing adapters, keeping balances, or branching on protocol type, every
-adapter correction becomes a router migration. This repo should keep that
+adapter correction becomes a router migration. This implementation keeps that
 pressure out of the dispatcher.
 
 ### Registry
@@ -120,7 +120,7 @@ Suggested contents:
 - Adapter status and protocol labels.
 - Account layout helpers for common position/ticket state if used.
 
-A single crate prevents hand-copied discriminators, inconsistent PDA seeds, and
+A single crate prevents duplicated discriminators, inconsistent PDA seeds, and
 slightly different account layouts from creeping into each program.
 
 ## Account Model
@@ -212,5 +212,5 @@ This repository targets:
 - Rust
 - TypeScript
 
-Several reference repos use Anchor `1.0.x` or Solana `3.x`. Treat their design
-ideas as references, not as version-compatible code to copy.
+All checked-in programs and scripts are pinned to these versions for build and
+test consistency.

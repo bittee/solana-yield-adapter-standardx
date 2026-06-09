@@ -1,8 +1,7 @@
 # Protocol Notes
 
-These notes are the protocol map for the five required adapters. They summarize
-what the reference repos taught us, with unresolved or risky areas called out
-instead of hidden behind optimistic wording.
+These notes define the protocol map for the five required adapters, including
+account tails, validation rules, valuation logic, and fork-test caveats.
 
 ## Shared Rules
 

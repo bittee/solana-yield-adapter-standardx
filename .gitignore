@@ -1,5 +1,6 @@
 target/
 .anchor/
+.claude/
 node_modules/
 program-keypairs/
 dist/
