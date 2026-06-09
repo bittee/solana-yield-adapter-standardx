@@ -31,7 +31,7 @@ const BALANCE_SIZE: usize = 104;
 const BALANCE_BANK_OFFSET: usize = 1;
 const BALANCE_ASSET_SHARES_OFFSET: usize = 40;
 const MAX_BALANCES: usize = 16;
-const I80F48_SCALE: u128 = 1u128 << 48;
+const I80F48_PRODUCT_SCALE: u128 = 1u128 << 96;
 
 #[program]
 pub mod marginfi_usdc_adapter {
@@ -57,21 +57,19 @@ pub mod marginfi_usdc_adapter {
             &ctx.accounts.marginfi_account.to_account_info(),
             &ctx.accounts.bank.key(),
         )?;
-        let position_out = shares_after
+        let position_out_raw = shares_after
             .checked_sub(shares_before)
             .ok_or(StandardError::MathOverflow)?;
-        let position_out_u64 = u128_to_u64(position_out)?;
+        let bank = read_bank(&ctx.accounts.bank.to_account_info())?;
+        let position_out_u64 = shares_to_tokens(position_out_raw, bank.asset_share_value)?;
         require!(
             position_out_u64 >= min_position_out,
             StandardError::SlippageExceeded
         );
 
-        let live_value = position_value(
-            &ctx.accounts.marginfi_account.to_account_info(),
-            &ctx.accounts.bank.to_account_info(),
-        )?;
+        let live_value = shares_to_tokens(shares_after, bank.asset_share_value)?;
         let position = &mut ctx.accounts.position;
-        position.shares = u128_to_u64(shares_after)?;
+        position.shares = live_value;
         position.cached_value = live_value;
 
         syas_interface::set_return_u64(position_out_u64);
@@ -108,9 +106,9 @@ pub mod marginfi_usdc_adapter {
             &ctx.accounts.bank.key(),
         )?;
         require!(shares_before != 0, StandardError::NothingToWithdraw);
-        let withdraw_all = u128::from(position_amount) >= shares_before;
-        let requested_amount =
-            shares_to_tokens(u128::from(position_amount), bank.asset_share_value)?;
+        let current_value = shares_to_tokens(shares_before, bank.asset_share_value)?;
+        let withdraw_all = position_amount >= current_value;
+        let requested_amount = position_amount;
 
         let usdc_before = ctx.accounts.adapter_vault.amount;
         invoke_lending_withdraw(&ctx, requested_amount, withdraw_all)?;
@@ -127,8 +125,8 @@ pub mod marginfi_usdc_adapter {
             &ctx.accounts.bank.key(),
         )?;
         let position = &mut ctx.accounts.position;
-        position.shares = u128_to_u64(shares_after)?;
-        position.cached_value = shares_to_tokens(shares_after, bank.asset_share_value)?;
+        position.shares = shares_to_tokens(shares_after, bank.asset_share_value)?;
+        position.cached_value = position.shares;
 
         syas_interface::set_return_u64(amount_out);
         emit!(Withdrawn {
@@ -168,7 +166,7 @@ pub mod marginfi_usdc_adapter {
             shares_to_tokens(shares, bank.asset_share_value)?
         };
         let position = &mut ctx.accounts.position;
-        position.shares = u128_to_u64(shares)?;
+        position.shares = value;
         position.cached_value = value;
         syas_interface::set_return_u64(value);
         emit!(ValueReported {
@@ -444,7 +442,7 @@ fn shares_to_tokens(asset_shares_bits: u128, asset_share_value_bits: u128) -> Re
     u128_to_u64(mul_div_floor_u128(
         asset_shares_bits,
         asset_share_value_bits,
-        I80F48_SCALE,
+        I80F48_PRODUCT_SCALE,
     )?)
 }
 
