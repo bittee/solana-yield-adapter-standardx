@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use syas_interface::{seeds, AdapterStatus, Protocol, MAX_RISK_TIER, STANDARD_VERSION};
 
-declare_id!("5VkZ8ibMyrwzJWsybHqXPQ29z7e6eRdaYph4iCPdCQsb");
+declare_id!("BWTrd2xVhy2T12CLrr9ffy3StQtYdJtRWGejWLVtCd2p");
 
 #[program]
 pub mod registry {

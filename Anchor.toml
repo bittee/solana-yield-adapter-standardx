@@ -7,7 +7,7 @@ skip-lint = false
 
 [programs.localnet]
 dispatcher = "HGj3chDufhrN3LZE31jjK9Kv4ETzmzkxHwxDQKCzUrk"
-registry = "5VkZ8ibMyrwzJWsybHqXPQ29z7e6eRdaYph4iCPdCQsb"
+registry = "BWTrd2xVhy2T12CLrr9ffy3StQtYdJtRWGejWLVtCd2p"
 mock_adapter = "8p7m5zPd9S52CXnEzNu3JBVqraUSwyktF4JWYaaphmEr"
 kamino_usdc_adapter = "E1bTG9vyE27xVay1oZrZck6idNJZjgotaeFia1P7q9Vb"
 marginfi_usdc_adapter = "CEy21HbuzU6K9WLueUwXtjeiLicVhyMLPtkMHXEzccXu"
@@ -17,7 +17,7 @@ drift_if_adapter = "BemVwXxgBf71TXQQrWJH61SR1oodD7tPzX8LFymeB6tM"
 
 [programs.devnet]
 dispatcher = "HGj3chDufhrN3LZE31jjK9Kv4ETzmzkxHwxDQKCzUrk"
-registry = "5VkZ8ibMyrwzJWsybHqXPQ29z7e6eRdaYph4iCPdCQsb"
+registry = "BWTrd2xVhy2T12CLrr9ffy3StQtYdJtRWGejWLVtCd2p"
 mock_adapter = "8p7m5zPd9S52CXnEzNu3JBVqraUSwyktF4JWYaaphmEr"
 kamino_usdc_adapter = "E1bTG9vyE27xVay1oZrZck6idNJZjgotaeFia1P7q9Vb"
 marginfi_usdc_adapter = "CEy21HbuzU6K9WLueUwXtjeiLicVhyMLPtkMHXEzccXu"

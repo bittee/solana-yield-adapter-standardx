@@ -1,7 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 
 export const REGISTRY_PROGRAM_ID = new PublicKey(
-  "5VkZ8ibMyrwzJWsybHqXPQ29z7e6eRdaYph4iCPdCQsb",
+  "BWTrd2xVhy2T12CLrr9ffy3StQtYdJtRWGejWLVtCd2p",
 );
 export const DISPATCHER_PROGRAM_ID = new PublicKey(
   "HGj3chDufhrN3LZE31jjK9Kv4ETzmzkxHwxDQKCzUrk",
