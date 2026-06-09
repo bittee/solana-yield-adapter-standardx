@@ -70,6 +70,8 @@ async function main(): Promise<void> {
     "--quiet",
     "--ledger",
     LEDGER_DIR,
+    "--warp-slot",
+    forkSlot.toString(),
     "--url",
     mainnetRpc,
     ...EXTERNAL_PROGRAMS.flatMap((program) => [
